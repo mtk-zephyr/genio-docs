@@ -1,0 +1,64 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright (c) 2026 MediaTek Inc.
+#
+# Builds the user guide PDF on every change, and publishes it as a release
+# asset when a version tag (v1.0, v1.1-rc1, ...) is pushed. Tags with a "-"
+# become pre-releases.
+name: User guide
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  pdf:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install fonts and libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            fonts-lato fonts-noto-mono libpango-1.0-0 libpangoft2-1.0-0
+
+      - name: Install Python packages
+        run: |
+          python3 -m venv .venv
+          .venv/bin/pip install -r tools/requirements.txt
+
+      - name: Build the PDF
+        run: .venv/bin/python tools/build-guide.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: genio-jailhouse-zephyr-guide
+          path: build/genio-jailhouse-zephyr-guide.pdf
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: pdf
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: genio-jailhouse-zephyr-guide
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=""
+          case "$TAG" in *-*) prerelease="--prerelease" ;; esac
+          gh release create "$TAG" genio-jailhouse-zephyr-guide.pdf \
+            --repo "$GITHUB_REPOSITORY" $prerelease \
+            --title "User guide ${TAG#v}" \
+            --notes "Running Zephyr alongside Linux with Jailhouse on Genio 510 and Genio 700 EVKs, revision ${TAG#v}."
