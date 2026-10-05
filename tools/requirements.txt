@@ -1,0 +1,5 @@
+# Python packages for building the PDFs (tested versions)
+weasyprint==70.0
+markdown-it-py==4.2.0
+beautifulsoup4==4.15.0
+Pygments==2.21.0

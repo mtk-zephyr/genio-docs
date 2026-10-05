@@ -1,0 +1,619 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * Copyright (c) 2026 MediaTek Inc.
+ *
+ * Print stylesheet for the PDF edition of the Genio Jailhouse/Zephyr guide.
+ * Rendered with WeasyPrint (CSS Paged Media). See build-guide.py.
+ */
+
+:root {
+	--ink: #1d2733;
+	--muted: #5c6b7c;
+	--navy: #14365d;
+	--navy-2: #1f4a7a;
+	--amber: #d9892b;
+	--teal: #1f7a74;
+	--rule: #d3dae3;
+	--tint: #f4f6f9;
+	--code-bg: #f5f7fa;
+	--note: #2a6bb0;
+	--note-bg: #eef4fb;
+	--caution: #b8541b;
+	--caution-bg: #fcf1e8;
+}
+
+/* ---------------------------------------------------------------- pages */
+
+@page {
+	size: A4;
+	margin: 25mm 20mm 22mm 22mm;
+
+	@top-left {
+		content: string(chapter, first-except);
+		width: 100%;
+		font: 600 7.6pt Lato;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+		color: var(--muted);
+		vertical-align: bottom;
+		padding-bottom: 3mm;
+		border-bottom: 0.5pt solid var(--rule);
+	}
+	@bottom-left {
+		content: string(docstatus);
+		font: 400 7.4pt Lato;
+		color: var(--muted);
+		vertical-align: top;
+		padding-top: 3mm;
+	}
+	@bottom-right {
+		content: counter(page) "  /  " counter(pages);
+		font: 600 7.6pt Lato;
+		color: var(--navy);
+		vertical-align: top;
+		padding-top: 3mm;
+	}
+}
+
+@page :first {
+	margin: 0;
+	@top-left { content: none; border: none; }
+	@bottom-left { content: none; }
+	@bottom-right { content: none; }
+}
+
+@page front {
+	@top-left { content: none; border: none; }
+}
+
+/* ----------------------------------------------------------------- base */
+
+html {
+	font-family: Lato, "Noto Sans", sans-serif;
+	font-size: 9.4pt;
+	line-height: 1.44;
+	color: var(--ink);
+	hyphens: manual;
+}
+
+body {
+	margin: 0;
+	string-set: docstatus attr(data-status);
+}
+
+p {
+	margin: 0 0 2.3mm;
+	orphans: 3;
+	widows: 3;
+}
+
+strong { font-weight: 700; color: #111a24; }
+em { font-style: italic; }
+
+a {
+	color: var(--navy-2);
+	text-decoration: none;
+}
+
+a.xref::after {
+	content: ", p.\00a0" target-counter(attr(href), page);
+	color: var(--muted);
+	font-size: 0.86em;
+}
+
+code {
+	font-family: "Noto Sans Mono", "DejaVu Sans Mono", monospace;
+	font-size: 0.86em;
+	background: #eef1f5;
+	border-radius: 1.2pt;
+	padding: 0 0.25em;
+	overflow-wrap: anywhere;
+	color: #22313f;
+}
+
+ul, ol {
+	margin: 0 0 2.8mm;
+	padding-left: 5.5mm;
+}
+
+li { margin: 0 0 1.2mm; }
+li > p { margin-bottom: 1.2mm; }
+li::marker { color: var(--navy-2); }
+ol > li::marker { font-weight: 700; }
+
+/* ------------------------------------------------------------- headings */
+
+h2, h3, h4 {
+	color: var(--navy);
+	break-after: avoid;
+	page-break-after: avoid;
+}
+
+h2 {
+	string-set: chapter attr(data-label);
+	bookmark-level: 1;
+	bookmark-label: attr(data-label);
+	font: 700 23pt/1.15 Lato;
+	margin: 0;
+	letter-spacing: -0.01em;
+}
+
+h3 {
+	bookmark-level: 2;
+	font: 700 12.8pt/1.25 Lato;
+	margin: 6.5mm 0 2.6mm;
+	padding-top: 1mm;
+}
+
+h3 .secnum {
+	color: var(--amber);
+	font-weight: 700;
+	margin-right: 2.2mm;
+}
+
+h4 {
+	bookmark-level: none;
+	font: 700 8.6pt Lato;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: var(--navy-2);
+	margin: 5mm 0 2mm;
+}
+
+/* ---------------------------------------------------------------- cover */
+
+.cover {
+	page: auto;
+	position: relative;
+	width: 210mm;
+	height: 297mm;
+	break-after: page;
+	overflow: hidden;
+}
+
+.cover-band {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 210mm;
+	height: 168mm;
+	background: var(--navy);
+}
+
+.cover-band svg {
+	position: absolute;
+	top: 0;
+	left: 0;
+}
+
+.cover-overline {
+	position: absolute;
+	top: 46mm;
+	left: 24mm;
+	font: 700 8.5pt Lato;
+	letter-spacing: 0.28em;
+	text-transform: uppercase;
+	color: var(--amber);
+}
+
+.cover-title {
+	position: absolute;
+	top: 58mm;
+	left: 24mm;
+	width: 160mm;
+	font: 300 31pt/1.12 Lato;
+	color: #ffffff;
+	letter-spacing: -0.01em;
+}
+
+.cover-title b {
+	font-weight: 900;
+}
+
+.cover-subtitle {
+	position: absolute;
+	top: 100mm;
+	left: 24mm;
+	width: 160mm;
+	font: 400 12.5pt/1.4 Lato;
+	color: #c9d6e6;
+}
+
+.cover-rule {
+	position: absolute;
+	top: 168mm;
+	left: 0;
+	width: 210mm;
+	height: 2.2mm;
+	background: var(--amber);
+}
+
+.cover-meta {
+	position: absolute;
+	top: 186mm;
+	left: 24mm;
+	width: 162mm;
+	border-collapse: collapse;
+	font-size: 9pt;
+}
+
+.cover-meta td {
+	padding: 2.4mm 0;
+	border-bottom: 0.5pt solid var(--rule);
+	vertical-align: top;
+}
+
+.cover-meta tr td { background: none !important; }
+.cover-meta code { background: none; padding: 0; font-size: 0.9em; }
+
+.cover-meta td:first-child {
+	width: 38mm;
+	font: 700 7.4pt Lato;
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+	color: var(--muted);
+	padding-top: 2.9mm;
+}
+
+.cover-abstract {
+	position: absolute;
+	top: 232mm;
+	left: 24mm;
+	width: 162mm;
+	font: 300 9.4pt/1.55 Lato;
+	color: var(--muted);
+}
+
+.cover-status {
+	position: absolute;
+	bottom: 20mm;
+	left: 24mm;
+	font: 700 8pt Lato;
+	letter-spacing: 0.2em;
+	text-transform: uppercase;
+	color: var(--caution);
+	border: 0.8pt solid var(--caution);
+	padding: 1.6mm 3.2mm;
+}
+
+.cover-brand {
+	position: absolute;
+	bottom: 21mm;
+	right: 24mm;
+	font: 300 9pt Lato;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: var(--navy);
+}
+
+.cover-brand b { font-weight: 900; }
+
+/* ----------------------------------------------------------- front matter */
+
+.front {
+	page: front;
+	break-after: page;
+}
+
+.front h1 {
+	font: 700 20pt Lato;
+	color: var(--navy);
+	margin: 0 0 6mm;
+	bookmark-level: 1;
+}
+
+.front h1::after {
+	content: "";
+	display: block;
+	width: 18mm;
+	height: 1.4mm;
+	background: var(--amber);
+	margin-top: 4mm;
+}
+
+.front h5 {
+	font: 700 8.6pt Lato;
+	text-transform: uppercase;
+	letter-spacing: 0.1em;
+	color: var(--navy-2);
+	margin: 8mm 0 2.5mm;
+}
+
+/* table of contents */
+
+.toc ul {
+	list-style: none;
+	padding: 0;
+	margin: 0;
+}
+
+.toc li { margin: 0; }
+
+.toc li.toc-chapter {
+	margin-top: 3.6mm;
+	font-weight: 700;
+	font-size: 10.4pt;
+	color: var(--navy);
+}
+
+.toc li.toc-chapter > a {
+	color: var(--navy);
+}
+
+.toc li.toc-section {
+	margin-left: 9mm;
+	font-size: 9.2pt;
+	line-height: 1.7;
+}
+
+.toc a {
+	color: var(--ink);
+}
+
+.toc a::after {
+	content: leader(". ") target-counter(attr(href), page);
+	color: var(--muted);
+	font-weight: 400;
+}
+
+.toc .num {
+	display: inline-block;
+	width: 9mm;
+	color: var(--amber);
+}
+
+.toc li.toc-section .num {
+	width: 10mm;
+	color: var(--muted);
+}
+
+/* ------------------------------------------------------------- chapters */
+
+section.chapter {
+	break-before: page;
+}
+
+.chapter-head {
+	margin: 2mm 0 6mm;
+	padding-bottom: 4mm;
+	border-bottom: 0.6pt solid var(--rule);
+}
+
+.chapter-num {
+	font: 300 44pt/1 Lato;
+	color: var(--amber);
+	margin-bottom: 1.5mm;
+	letter-spacing: -0.02em;
+}
+
+.chapter-toc {
+	list-style: none;
+	margin: 5mm 0 0;
+	padding: 0;
+	columns: 2;
+	column-gap: 8mm;
+	font-size: 8.6pt;
+}
+
+.chapter-toc li {
+	margin: 0 0 1.2mm;
+	break-inside: avoid;
+}
+
+.chapter-toc a { color: var(--muted); }
+.chapter-toc .num { color: var(--amber); font-weight: 700; margin-right: 1.6mm; }
+
+/* --------------------------------------------------------------- tables */
+
+table {
+	width: 100%;
+	border-collapse: collapse;
+	margin: 1mm 0 4.5mm;
+	font-size: 8.5pt;
+	line-height: 1.38;
+}
+
+thead { display: table-header-group; }
+
+th {
+	background: var(--navy);
+	color: #ffffff;
+	font-weight: 700;
+	text-align: left;
+	padding: 1.9mm 2.2mm;
+	border: none;
+	vertical-align: bottom;
+}
+
+th code { background: transparent; color: #ffffff; }
+
+td {
+	padding: 1.7mm 2.2mm;
+	border-bottom: 0.5pt solid var(--rule);
+	vertical-align: top;
+}
+
+tbody tr:nth-child(even) td { background: var(--tint); }
+
+tr { break-inside: avoid; }
+
+table.keep { break-inside: avoid; }
+p.lead { break-after: avoid; }
+
+td code { font-size: 0.9em; }
+
+/* --------------------------------------------------------------- code */
+
+pre {
+	font-family: "Noto Sans Mono", "DejaVu Sans Mono", monospace;
+	font-size: 7.8pt;
+	line-height: 1.42;
+	background: var(--code-bg);
+	border: 0.5pt solid #e1e6ec;
+	border-radius: 2pt;
+	padding: 2.3mm 3.2mm;
+	margin: 0 0 3.2mm;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+	color: #1f2d3a;
+	break-inside: avoid;
+}
+
+pre code {
+	background: none;
+	padding: 0;
+	font-size: 1em;
+	border-radius: 0;
+	color: inherit;
+}
+
+.codeblock {
+	margin: 0 0 3.2mm;
+	break-inside: avoid;
+}
+
+.codeblock pre {
+	margin: 0;
+	border-left: 2.4pt solid var(--navy);
+	border-top-left-radius: 0;
+}
+
+.codeblock.board pre { border-left-color: var(--teal); }
+
+.codelabel {
+	display: inline-block;
+	font: 700 6.4pt Lato;
+	letter-spacing: 0.16em;
+	text-transform: uppercase;
+	color: #ffffff;
+	background: var(--navy);
+	padding: 0.7mm 2.2mm 0.5mm;
+	border-top-left-radius: 1.5pt;
+	border-top-right-radius: 1.5pt;
+}
+
+.codeblock.board .codelabel { background: var(--teal); }
+
+/* syntax colours, kept quiet */
+.c, .c1, .ch, .cm { color: #7a8794; font-style: italic; }
+.k, .kn, .nb { color: var(--navy-2); font-weight: 700; }
+.s, .s1, .s2, .sh, .sx { color: #2f6f4f; }
+.nv, .vg { color: #8a4b0f; }
+.o { color: #4a5a6a; }
+
+/* ------------------------------------------------------------- callouts */
+
+.callout {
+	margin: 1mm 0 4mm;
+	padding: 2.2mm 3.4mm 2.4mm 3.6mm;
+	border-left: 2.4pt solid var(--note);
+	background: var(--note-bg);
+	break-inside: avoid;
+	font-size: 9.1pt;
+}
+
+.callout p:last-child { margin-bottom: 0; }
+
+.callout .callout-label {
+	display: block;
+	font: 700 6.8pt Lato;
+	letter-spacing: 0.18em;
+	text-transform: uppercase;
+	color: var(--note);
+	margin-bottom: 0.8mm;
+}
+
+.callout .callout-label svg {
+	width: 3.4mm;
+	height: 3.4mm;
+	vertical-align: -0.9mm;
+	margin-right: 1.6mm;
+}
+
+.callout-pair {
+	overflow: hidden;
+	margin: 1mm 0 4mm;
+	break-inside: avoid;
+}
+
+.callout-pair .callout {
+	float: left;
+	box-sizing: border-box;
+	width: 48.5%;
+	margin: 0;
+}
+
+.callout-pair .callout + .callout { margin-left: 3%; }
+
+.callout.caution {
+	border-left-color: var(--caution);
+	background: var(--caution-bg);
+}
+
+.callout.caution .callout-label { color: var(--caution); }
+
+/* -------------------------------------------------------------- figures */
+
+figure {
+	margin: 3mm 0 6mm;
+	break-inside: avoid;
+}
+
+figure.narrow svg {
+	width: 88%;
+	margin: 0 auto;
+}
+
+figure svg {
+	width: 100%;
+	height: auto;
+	display: block;
+}
+
+figcaption {
+	font-size: 8.2pt;
+	color: var(--muted);
+	margin-top: 2.2mm;
+	padding-top: 1.6mm;
+	border-top: 0.5pt solid var(--rule);
+}
+
+figcaption b {
+	color: var(--navy);
+	letter-spacing: 0.04em;
+}
+
+/* ------------------------------------------------------------ footnotes */
+
+.footnote {
+	float: footnote;
+	font-size: 7pt;
+	line-height: 1.35;
+	color: var(--muted);
+	overflow-wrap: anywhere;
+	font-family: "Noto Sans Mono", "DejaVu Sans Mono", monospace;
+}
+
+::footnote-call {
+	content: counter(footnote);
+	font-size: 0.66em;
+	vertical-align: super;
+	line-height: 0;
+	color: var(--amber);
+	font-weight: 700;
+}
+
+::footnote-marker {
+	content: counter(footnote) ". ";
+	color: var(--amber);
+	font-family: Lato;
+	font-weight: 700;
+}
+
+@page {
+	@footnote {
+		border-top: 0.5pt solid var(--rule);
+		padding-top: 1.6mm;
+		margin-top: 3mm;
+	}
+}
