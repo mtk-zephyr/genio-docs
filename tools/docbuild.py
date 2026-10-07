@@ -175,13 +175,19 @@ def prepare(body_md):
 
 
 def finish(soup):
-	"""Short tables stay on one page; section numbers; page references."""
+	"""Short tables stay on one page and code blocks with their lead-in; section numbers; page references."""
 	for table in soup.find_all("table"):
 		if len(table.find_all("tr")) <= 13:
 			table["class"] = (table.get("class") or []) + ["keep"]
 			lead = table.find_previous_sibling()
 			if lead and lead.name == "p":
 				lead["class"] = (lead.get("class") or []) + ["lead"]
+
+	# a paragraph that introduces a code block ("...:") stays with it
+	for box in soup.find_all("div", class_="codeblock"):
+		lead = box.find_previous_sibling()
+		if lead and lead.name == "p" and lead.get_text().rstrip().endswith(":"):
+			lead["class"] = (lead.get("class") or []) + ["lead"]
 
 	for h3 in soup.find_all("h3"):
 		m = re.match(r"^(\d+\.\d+)\s+(.*)$", h3.decode_contents(), re.S)
