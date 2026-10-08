@@ -8,7 +8,7 @@
 | Applies to | Genio 510 EVK (MT8370), Genio 700 EVK (MT8390) |
 | Software | IoT Yocto v26.0 (`rity-scarthgap-v26.0`) with `meta-mediatek-experimental`; MediaTek Jailhouse (mtk-jailhouse); MediaTek Genio Zephyr (mtk-zephyr, Zephyr 4.5) with Zephyr SDK 1.0.1 |
 | License | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| Last updated | 2026-10-04 |
+| Last updated | 2026-10-08 |
 
 ---
 
@@ -74,8 +74,7 @@ basics of Zephyr application development.
  |   ------------------------------------------------------------------   |
  |                   Jailhouse hypervisor (4 MiB of RAM)                  |
  |   CPU and memory partitioning, interrupt routing, and per-pin          |
- |   mediation of the shared GPIO, EINT, pin configuration and clock      |
- |   gate registers                                                       |
+ |   mediation of the shared GPIO, EINT and clock gate registers          |
  +------------------------------------------------------------------------+
 ```
 
@@ -178,7 +177,7 @@ Your user must be a member of the `dialout` group to open serial ports.
   | EVK connector | Purpose in this guide |
   |---|---|
   | **USB0** (`Micro USB D/L`) | Flashing, and `adb` access to Linux |
-  | **UART0** (CN3203) | Linux console (and hypervisor messages) |
+  | **UART0** | Linux console (and hypervisor messages) |
   | **UART1** (CN3201) | Zephyr console |
 
   Each UART connector has its own USB-to-UART bridge and appears on the host
@@ -380,8 +379,8 @@ genio-config
 
 Connect the board as described in [Board connection][iot-connect]: the 12 V
 adapter, and a micro-USB cable to **USB0** (`Micro USB D/L`). For the rest of
-this guide, also connect **UART1** (CN3201), and optionally **UART0**
-(CN3203), to the host.
+this guide, also connect **UART1** (CN3201), and optionally **UART0**, to the
+host.
 
 ### 4.3 Flashing with the Jailhouse overlay
 
@@ -711,7 +710,7 @@ Keep the console open while you run Zephyr. Only one program may read the
 serial port at a time; if two programs read it, each receives only part of
 the output.
 
-The Linux console is on UART0 (connector CN3203), at **921600 baud**. The
+The Linux console is on UART0, at **921600 baud**. The
 hypervisor prints its messages there too, and to its own console buffer
 (see [Section 6.7](#67-monitoring)).
 
@@ -752,9 +751,11 @@ jailhouse console
 ```
 
 ```
-Initializing Jailhouse hypervisor v0.12 (...) on CPU 5
+Initializing Jailhouse hypervisor 1.0 (<commit>) on CPU <n>
 ...
-Initializing unit: MediaTek
+Initializing unit: mt8188_clk
+Initializing unit: mt8188_eint
+Initializing unit: mt8188_gpio
 ...
 Activating hypervisor
 ```
@@ -857,6 +858,29 @@ jailhouse cell load zephyr /root/zephyr.bin -a 0x8000
 jailhouse cell start zephyr
 ```
 
+**CPU frequency.** Linux sets the clocks of both CPU clusters, the
+Cortex-A55 cluster and the Cortex-A78 cluster, through cpufreq and thermal
+management. Jailhouse does not partition these clocks, so Zephyr runs at the
+frequency that Linux selects for the cluster of its CPUs. The image's default
+governor, `schedutil`, selects that frequency from the load on the cluster's
+Linux CPUs: when Linux is idle, the cluster slows down, and Zephyr with it.
+
+For latency and timing measurements, select the `performance` governor for
+both clusters:
+
+**Board**
+
+```bash
+for p in /sys/devices/system/cpu/cpufreq/policy*; do
+    echo performance > $p/scaling_governor
+done
+cat /sys/devices/system/cpu/cpufreq/policy*/scaling_cur_freq
+```
+
+The last command shows the frequency of each cluster, in kHz. The setting
+does not persist across a reboot; write `schedutil` to return to the default.
+Thermal management can still lower the frequency when the SoC is hot.
+
 ### 6.5 Running Zephyr on two cores (SMP)
 
 Build the image for the SMP target (see [Section 5.6](#56-building-the-genio-samples))
@@ -880,14 +904,23 @@ thread_a: Hello World from cpu 0 on mt8370_genio_510_evk!
 thread_b: Hello World from cpu 1 on mt8370_genio_510_evk!
 ```
 
+> **Caution:** Run SMP images only in the `-zephyr-smp` and
+> `-zephyr-afe-smp` cells. In any other cell the image fails while the cell
+> stays `running`, and the hypervisor console shows no error. In a
+> `-zephyr-a78` cell it stops before its console starts and prints nothing.
+> In a one-core cell such as `-zephyr` it panics after
+> `Failed to boot secondary CPU core 1 (MPID:0x200)`. See
+> [Section 8](#8-troubleshooting).
+
 ### 6.6 Running Zephyr on a Cortex-A78
 
 Single-core images run unchanged on the Cortex-A78; use the `-zephyr-a78`
 cell (CPU 5 on the Genio 510 EVK, CPU 7 on the Genio 700 EVK).
 
-> **Note:** The Cortex-A78 cores share a clock, which Linux controls
-> (cpufreq and thermal management). The speed of Zephyr on a Cortex-A78
-> therefore follows the frequency that Linux selects.
+> **Note:** As in the Cortex-A55 cells, Linux sets the clock: Zephyr runs
+> at the frequency that Linux selects for the Cortex-A78 cluster (see
+> [Section 6.4](#64-choosing-a-cell)). Select the `performance` governor
+> before you compare the two core types.
 
 ### 6.7 Monitoring
 
@@ -1109,10 +1142,12 @@ share the audio front end with Linux.
 | `jailhouse cell create` fails with `File exists` | A cell with the same name exists; all Zephyr cells are named `zephyr` | Destroy the existing cell first (`jailhouse cell destroy zephyr`) |
 | `jailhouse cell create` fails with `Device or resource busy` | Another cell uses the same CPUs or pins, for example a `uart-demo` cell, which also uses CPU 3 and UART1 | Destroy the other cell first |
 | The cell state is `failed` | The cell accessed memory or a device that it does not own, or the image does not fit into its memory | Read `jailhouse console`: an `Unhandled data read`/`write` message names the address. Check that the image was built for the right board target, uses only the granted devices, and fits into 8 MiB (`system/memory_window`); use an AFE cell for audio images |
-| No output on UART1, cell `running` | Wrong serial device or baud rate; another program reads the port; the image was loaded without `-a 0x8000`; the image was built for another board | Check the device and 115200 baud; run `fuser /dev/ttyUSB<n>` on the host; reload with `-a 0x8000`; rebuild for the right board target |
+| No output on UART1, cell `running` | Wrong serial device or baud rate; another program reads the port; the image was loaded without `-a 0x8000`; the image was built for another board; an SMP image runs in a cell on other CPUs, such as `-zephyr-a78` | Check the device and 115200 baud; run `fuser /dev/ttyUSB<n>` on the host; reload with `-a 0x8000`; rebuild for the right board target; run SMP images only in the `-smp` cells (see [Section 6.5](#65-running-zephyr-on-two-cores-smp)) |
+| UART1 shows `Failed to boot secondary CPU core 1 (MPID:0x200)` and a kernel panic; the cell stays `running` | An SMP image runs in a one-core cell, such as `-zephyr`: the hypervisor refuses to start CPU 2, which the cell does not own | Use the `-zephyr-smp` or `-zephyr-afe-smp` cell, or build the image for the single-core target (see [Section 6.5](#65-running-zephyr-on-two-cores-smp)) |
 | `uart-demo` prints unreadable characters | UART1 is still in the high-speed mode that Zephyr set, or the terminal is not at 38400 baud | Run `devmem2 0x11001224 w 0` on the board; set the terminal to 38400 baud (see [Section 6.10](#610-optional-checking-a-cell-with-the-uart-demo-inmate)) |
 | `jailhouse cell stats` fails with `setupterm: could not find terminal` | The command was started without a terminal, or with a terminal type unknown to the board | Use `adb shell -t` or an interactive `adb shell`, and set `TERM=xterm` if needed |
 | Audio samples run but capture silence or report a DMA position outside the buffer | The audio power domain is off, the cell is not an AFE cell, the image was built without `mtk-afe`, or wires are missing | Work through [Section 7.3](#73-audio-samples) |
+| Zephyr code runs slower than expected, or its processing times vary from run to run | Linux's `schedutil` governor lowers the clock of Zephyr's cluster while Linux is idle | Select the `performance` governor (see [Section 6.4](#64-choosing-a-cell)) |
 | A Linux CPU is missing from `/sys/devices/system/cpu/online` | A cell uses it | Expected; `jailhouse cell destroy` returns it to Linux |
 | Zephyr build fails because CMake or Python is too old | The host provides versions below CMake 3.28 or Python 3.12 | Use Ubuntu 24.04, or install newer versions (see [Section 5.1](#51-installing-the-host-dependencies)) |
 
@@ -1173,10 +1208,11 @@ The AFE cells additionally grant:
 | Secure monitor call | `MTK_SIP_AUDIO_CONTROL` |
 | eTDM pins | GPIO 4-6, 11, 107-110, 114-117 and 125-128 |
 
-Jailhouse mediates the registers that Linux and the cells share (GPIO, pin
-configuration, external interrupts and clock gates): each cell can read and
-change only the fields of the pins and clock gates it owns. External
-interrupts of a cell's pins are delivered to the cell.
+Jailhouse mediates the GPIO, external interrupt and clock gate registers that
+Linux and the cells share: each cell can read and change only the fields of
+the pins and clock gates it owns. External interrupts of a cell's pins are
+delivered to the cell. The pin configuration registers (pull, drive strength,
+input enable) are not mediated and stay with Linux.
 
 ### 9.4 CPU and MPIDR map
 
@@ -1235,8 +1271,12 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 - The AFE cells share the audio front end, its clocks and the audio power
   domain with Linux. Linux must keep the audio power domain on and must not
   use the eTDM ports while an AFE cell runs.
-- The clock of the Cortex-A78 cores is controlled by Linux.
+- Linux sets the clocks of both CPU clusters. Zephyr runs at the frequency
+  that Linux selects for the cluster of its CPUs (see
+  [Section 6.4](#64-choosing-a-cell)).
 - Multi-core cells start their CPUs only through PSCI over `smc`.
+- Linux can change the pin configuration (pull, drive strength, input
+  enable) of the cells' pins; Jailhouse does not mediate these registers.
 
 ---
 
@@ -1272,3 +1312,4 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 | Revision | Date | Changes |
 |---|---|---|
 | 0.9 | 2026-10-04 | Initial draft for review |
+| 0.9.1 | 2026-10-08 | UART0 named by its board label only. Linux sets the clocks of both CPU clusters; use the `performance` governor for measurements (Sections 6.4, 6.6, 9.7). How an SMP image fails in a cell other than an SMP cell (Section 6.5). Two new troubleshooting entries. The hypervisor of mtk-v1.0: its start-up messages (Section 6.2), and pin configuration registers that stay with Linux (Sections 9.3, 9.7). |

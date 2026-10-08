@@ -70,7 +70,7 @@ def figure_architecture():
 	cell(0, 412, NAVY, "#eef3f9", "Root cell: Linux (IoT Yocto)", [
 		"All CPUs and devices that no cell takes",
 		"Manages Jailhouse: enable, cell create, load, start",
-		"Console on UART0 (CN3203)",
+		"Console on UART0",
 		"Jailhouse driver and tools",
 	])
 	cell(428, 212, AMBER, "#fdf4ea", "Inmate cell: Zephyr", [
@@ -83,7 +83,7 @@ def figure_architecture():
 	p.append(f'<rect x="0" y="168" width="640" height="70" rx="6" fill="{NAVY}"/>')
 	p.append(svg_text(18, 193, "Jailhouse hypervisor", 15, 700, "#ffffff"))
 	p.append(svg_text(18, 211, "Partitions CPUs, memory and interrupts between the cells", 10.6, 400, "#c9d6e6"))
-	p.append(svg_text(18, 227, "Mediates the shared GPIO, EINT, pin configuration and clock gate registers, per pin", 10.6, 400, "#c9d6e6"))
+	p.append(svg_text(18, 227, "Mediates the shared GPIO, EINT and clock gate registers, per pin", 10.6, 400, "#c9d6e6"))
 
 	p.append(svg_text(0, 262, "CPUS OF THE GENIO 510 EVK WITH THE DEFAULT ZEPHYR CELL", 8.6, 700, MUTED, spacing=1.1))
 	cpus = [("CPU 0", "Cortex-A55", 0), ("CPU 1", "Cortex-A55", 0), ("CPU 2", "Cortex-A55", 0),
