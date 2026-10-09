@@ -5,7 +5,7 @@
 
 usage: make-preview.py <document.pdf> <preview.png> [pages]
 
-pages is a comma-separated list, by default 1,6,18 (for the user guide: the
+pages is a comma-separated list, by default 1,6,19 (for the user guide: the
 cover, the system overview and running a Zephyr image). Needs pdftoppm
 (poppler-utils) and Pillow.
 """
@@ -32,7 +32,7 @@ def page_image(pdf, number, tmp):
 
 def main():
 	pdf, out = Path(sys.argv[1]), Path(sys.argv[2])
-	pages = [int(p) for p in (sys.argv[3] if len(sys.argv) > 3 else "1,6,18").split(",")]
+	pages = [int(p) for p in (sys.argv[3] if len(sys.argv) > 3 else "1,6,19").split(",")]
 	with tempfile.TemporaryDirectory() as tmp:
 		ims = [page_image(pdf, n, tmp) for n in pages]
 
