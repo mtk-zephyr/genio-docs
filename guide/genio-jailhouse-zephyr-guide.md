@@ -4,9 +4,9 @@
 
 | | |
 |---|---|
-| Document status | Draft for review |
+| Document status | Released |
 | Applies to | Genio 510 EVK (MT8370), Genio 700 EVK (MT8390) |
-| Software | IoT Yocto v26.0 (`rity-scarthgap-v26.0`) with `meta-mediatek-experimental`; MediaTek Jailhouse (mtk-jailhouse); MediaTek Genio Zephyr (mtk-zephyr, Zephyr 4.5) with Zephyr SDK 1.0.1 |
+| Software | IoT Yocto v26.0 (`rity-scarthgap-v26.0`) with `meta-mediatek-experimental`; MediaTek Jailhouse `mtk-v1.0.0`; MediaTek Genio Zephyr `mtk-genio-v1.0.0` (Zephyr 4.5) with Zephyr SDK 1.0.1 |
 | License | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | Last updated | 2026-10-08 |
 
@@ -131,15 +131,16 @@ Cortex-A55 cores (see [Section 6.4](#64-choosing-a-cell)).
 |---|---|---|
 | IoT Yocto BSP v26.0 | `https://gitlab.com/mediatek/aiot/bsp/manifest.git`, tag `rity-scarthgap-v26.0` | Yocto Project 5.0 (Scarthgap), Linux 6.6 |
 | `meta-mediatek-experimental` | `https://gitlab.com/mediatek/aiot/rity/meta-mediatek-experimental`, branch `scarthgap` | Provides the `jailhouse` recipe (MediaTek Jailhouse), the Jailhouse kernel support and the Jailhouse device-tree overlays |
-| MediaTek Jailhouse | `https://github.com/mtk-jailhouse/jailhouse` | Built by the `jailhouse` recipe; you do not need to fetch it yourself |
-| Genio Zephyr tree | `https://github.com/mtk-zephyr/mtk-zephyr`, branch `mtk-genio-dev` | Zephyr 4.5 with the Genio board support |
-| Genio Zephyr samples | `https://github.com/mtk-zephyr/samples` | West manifest repository; fetches the Zephyr tree and its modules |
+| MediaTek Jailhouse | `https://github.com/mtk-jailhouse/jailhouse`, release `mtk-v1.0.0` on the branch `mtk-v1.0` | Built by the `jailhouse` recipe from the release branch; you do not need to fetch it yourself |
+| Genio Zephyr tree | `https://github.com/mtk-zephyr/mtk-zephyr`, tag `mtk-genio-v1.0.0` | Zephyr 4.5 with the Genio board support |
+| Genio Zephyr samples | `https://github.com/mtk-zephyr/samples`, tag `mtk-genio-v1.0.0` | West manifest repository; fetches the Zephyr tree and its modules |
 | Zephyr SDK | Installed with `west sdk install` | Version 1.0.1, as set in the tree's `SDK_VERSION` file; only the `aarch64-zephyr-elf` toolchain is needed |
 
-> **Note:** The samples' `west.yml` tracks the development branch
-> `mtk-genio-dev` of the Genio Zephyr tree, which is rebased and
-> force-pushed. For a product, pin a release tag in `west.yml` instead of a
-> branch.
+> **Note:** This guide creates the Zephyr workspace at the samples tag
+> `mtk-genio-v1.0.0` (see [Section 5.2](#52-creating-the-workspace)), which
+> selects the Genio Zephyr tree at its tag of the same name. The development
+> branches `mtk-genio-dev` of both repositories are rebased and force-pushed;
+> do not base a product on them.
 
 ### 2.3 Host computer
 
@@ -177,7 +178,7 @@ Your user must be a member of the `dialout` group to open serial ports.
   | EVK connector | Purpose in this guide |
   |---|---|
   | **USB0** (`Micro USB D/L`) | Flashing, and `adb` access to Linux |
-  | **UART0** | Linux console (and hypervisor messages) |
+  | **UART0** (CN3200) | Linux console (and hypervisor messages) |
   | **UART1** (CN3201) | Zephyr console |
 
   Each UART connector has its own USB-to-UART bridge and appears on the host
@@ -248,6 +249,20 @@ bitbake-layers show-layers | grep experimental
 The output lists the layer with the collection name `experimental` and
 priority 8.
 
+Check that the layer builds MediaTek Jailhouse 1.0, which this guide
+describes:
+
+**Host**
+
+```bash
+grep '^BRANCH' $PROJ_ROOT/src/meta-mediatek-experimental/recipes-kernel/jailhouse/jailhouse_git.bb
+```
+
+The output is `BRANCH = "mtk-v1.0"`. If it names another branch, such as
+`MTK-Genio`, the clone is an older revision of the layer, which builds an
+earlier Jailhouse tree: update it with
+`git -C $PROJ_ROOT/src/meta-mediatek-experimental pull` and check again.
+
 > **Note:** As its name says, the layer carries features that are not yet
 > part of the main IoT Yocto layers. Use the branch that matches your BSP
 > release.
@@ -282,8 +297,8 @@ makes all of it depend on `jailhouse` being in `IMAGE_INSTALL`:
 
 | What | Effect |
 |---|---|
-| `jailhouse` package | The hypervisor firmware, the Jailhouse kernel module (`jailhouse.ko`), the `jailhouse` command-line tool, the cell configurations for both EVKs and the demo inmates |
-| Linux kernel patches and configuration | Kernel symbol exports for the Jailhouse driver; the kernel stays at EL1 (no VHE) so that Jailhouse can take over EL2; the `mtk_jh_rproc` remoteproc driver; virtual PCI support |
+| `jailhouse` package | The hypervisor firmware, the Jailhouse kernel module (`jailhouse.ko`), the `jailhouse` command-line tool, the nine cell configurations of the board you build for (`MACHINE`) and the demo inmates |
+| Linux kernel patches and configuration | Kernel symbol exports for the Jailhouse driver; the kernel stays at EL1 (no VHE) so that Jailhouse can take over EL2; the `mtk-jh-rproc` remote processor driver and RPMsg support (see [Section 7.4](#74-rpmsg-with-linux)); virtual PCI support |
 | Device-tree overlay `6.6-Genio-510-Jailhouse-DT.dtbo` or `6.6-Genio-700-Jailhouse-DT.dtbo` | Removes the hypervisor and inmate memory from Linux. It is built with the image but must be selected when you flash (see [Section 4.3](#43-flashing-with-the-jailhouse-overlay)) |
 
 Without the `IMAGE_INSTALL` line, adding the layer changes nothing related to
@@ -379,8 +394,8 @@ genio-config
 
 Connect the board as described in [Board connection][iot-connect]: the 12 V
 adapter, and a micro-USB cable to **USB0** (`Micro USB D/L`). For the rest of
-this guide, also connect **UART1** (CN3201), and optionally **UART0**, to the
-host.
+this guide, also connect **UART1** (CN3201), and optionally **UART0**
+(CN3200), to the host.
 
 ### 4.3 Flashing with the Jailhouse overlay
 
@@ -485,12 +500,12 @@ The following checks run on the board.
 
    ```bash
    modinfo -n jailhouse
-   ls /usr/share/jailhouse/cells/ | grep $(uname -n)
+   ls /usr/share/jailhouse/cells/
    ```
 
    The first command prints the path of `jailhouse.ko` below
-   `/lib/modules/$(uname -r)/`; the second lists the cells of your board (see
-   [Section 9.2](#92-cells)).
+   `/lib/modules/$(uname -r)/`; the second lists the nine cells of your board
+   (see [Section 9.2](#92-cells)).
 
 ---
 
@@ -522,7 +537,7 @@ dtc --version
 
 The Genio samples repository is the west manifest of the workspace. One
 `west init` fetches the Genio Zephyr tree, the modules it needs and the
-samples, at matching revisions.
+samples, at the matching revisions of the release `mtk-genio-v1.0.0`.
 
 1. Create the workspace directory and a Python virtual environment, and
    install west:
@@ -544,7 +559,7 @@ samples, at matching revisions.
    **Host**
 
    ```bash
-   west init -m https://github.com/mtk-zephyr/samples .
+   west init -m https://github.com/mtk-zephyr/samples --mr mtk-genio-v1.0.0 .
    west update
    ```
 
@@ -751,7 +766,7 @@ jailhouse console
 ```
 
 ```
-Initializing Jailhouse hypervisor 1.0 (<commit>) on CPU <n>
+Initializing Jailhouse hypervisor mtk-v1.0.0 (0-g<commit>) on CPU <n>
 ...
 Initializing unit: mt8188_clk
 Initializing unit: mt8188_eint
@@ -759,6 +774,9 @@ Initializing unit: mt8188_gpio
 ...
 Activating hypervisor
 ```
+
+The version names the release. A build from a later commit of the release
+branch shows the number of commits since the release instead of `0`.
 
 > **Note:** Enable Jailhouse once after each boot. `jailhouse cell list`
 > prints nothing, and succeeds, when Jailhouse is not enabled.
@@ -841,6 +859,7 @@ of them can exist at a time.
 | `genio-<board>-evk-zephyr-afe.cell` | 3 | 3 | Audio images |
 | `genio-<board>-evk-zephyr-afe-a78.cell` | 5 | 7 | Audio images on a Cortex-A78 |
 | `genio-<board>-evk-zephyr-afe-smp.cell` | 2 and 3 | 2 and 3 | Audio images on two cores |
+| `genio-<board>-evk-zephyr-rpmsg.cell` | 3 | 3 | Images that exchange RPMsg messages with Linux (see [Section 7.4](#74-rpmsg-with-linux)) |
 
 `<board>` is `510` or `700`. The `-afe` cells grant the same resources as
 their counterparts plus the audio front end (see
@@ -1127,6 +1146,176 @@ missing: the driver still reports success, but no audio moves.
 Do not use the eTDM ports from Linux while an AFE cell runs: the AFE cells
 share the audio front end with Linux.
 
+### 7.4 RPMsg with Linux
+
+The `-zephyr-rpmsg` cells connect Zephyr and Linux through shared memory, for
+RPMsg messages. The root cell has a virtual PCI device, an ivshmem device,
+whose 1 MiB of shared memory at `0x6ba00000` both cells map; each side
+signals the other through the device's interrupt (see
+[Section 9.3](#93-resources-of-the-zephyr-cells)). On Linux, the
+`mtk-jh-rproc` driver binds to the device as a remote processor. It handles
+only the messages: Jailhouse, not the driver, loads and starts Zephyr.
+
+The RPMsg sample of the Genio samples, `samples/rpmsg`, shows the connection.
+It has two parts:
+
+- a Zephyr application, `samples/rpmsg/zephyr`: the RPMsg remote. It uses OpenAMP
+  over the shared memory, announces an `rpmsg-raw` endpoint and answers each
+  message;
+- a Linux tool, `samples/rpmsg/linux`: `rpmsg-test` attaches Linux to the remote
+  processor and exchanges messages with Zephyr through `/dev/rpmsg<m>`.
+
+Linux needs nothing beyond the image of [Section 3](#3-building-the-linux-image-with-jailhouse): with `jailhouse` in
+`IMAGE_INSTALL`, the layer builds the `mtk-jh-rproc` driver and the RPMsg
+character device into the kernel.
+
+1. **Build the Zephyr application** in the Zephyr workspace (see
+   [Section 5.6](#56-building-the-genio-samples)):
+
+   **Host**
+
+   ```bash
+   west build -p -b mt8370_genio_510_evk/mt8188/a55 -d build/rpmsg samples/rpmsg/zephyr
+   ```
+
+   For the Genio 700 EVK, use `mt8390_genio_700_evk/mt8188/a55`. The
+   application's board overlays describe the virtual PCI host and the
+   ivshmem device of the cell; `west` selects them by the board name.
+
+2. **Build the Linux tool** with Ubuntu's cross compiler
+   (`sudo apt install gcc-aarch64-linux-gnu`). One binary serves both boards:
+
+   **Host**
+
+   ```bash
+   make -C samples/rpmsg/linux
+   ```
+
+   The tool is `samples/rpmsg/linux/build/rpmsg-test`. The compiler prints
+   one warning, `unused variable 'id'`, which is harmless.
+
+3. **Copy both to the board:**
+
+   **Host**
+
+   ```bash
+   adb push build/rpmsg/zephyr/zephyr.bin /root/rpmsg-zephyr.bin
+   adb push samples/rpmsg/linux/build/rpmsg-test /root/rpmsg-test
+   adb shell chmod +x /root/rpmsg-test
+   ```
+
+4. **Find the remote processor.** After `jailhouse enable`, Linux has the
+   ivshmem device and a remote processor for it, named `0001:00:00.0`. Keep
+   its number in `n`:
+
+   **Board**
+
+   ```bash
+   lspci
+   n=$(grep -l 0001:00:00.0 /sys/class/remoteproc/*/name |
+       sed 's|.*/remoteproc\([0-9]*\)/name|\1|')
+   cat /sys/class/remoteproc/remoteproc$n/state
+   ```
+
+   ```
+   0001:00:00.0 Unassigned class [ff00]: Siemens AG Device [110a:4106]
+   detached
+   ```
+
+   `n` is `0` on the Genio 510 EVK and `1` on the Genio 700 EVK, where
+   `remoteproc0` is the system companion processor (`scp`). Run the
+   following steps in the same shell, or set `n` again.
+
+5. **Start Zephyr in the `-zephyr-rpmsg` cell:**
+
+   **Board**
+
+   ```bash
+   jailhouse cell create /usr/share/jailhouse/cells/$(uname -n)-zephyr-rpmsg.cell
+   jailhouse cell load zephyr /root/rpmsg-zephyr.bin -a 0x8000
+   jailhouse cell start zephyr
+   ```
+
+   The hypervisor console shows `Shared memory connection established, peer
+   cells:` followed by `"genio-<board>-evk"`. On UART1, Zephyr waits for
+   Linux:
+
+   ```
+   *** Booting Zephyr OS build <version> ***
+   ...
+   [INFO]  Setting resource table
+   [INFO]  Awaiting VIRTIO config ready ...
+   ```
+
+6. **Exchange messages.** Run the tool with the number of the remote
+   processor. It attaches Linux to Zephyr, then sends a message about every
+   2 seconds until you stop it with Ctrl+C:
+
+   **Board**
+
+   ```bash
+   /root/rpmsg-test -p $n
+   ```
+
+   ```
+   ...
+   [INFO]  remoteproc device path='/sys/class/remoteproc/remoteproc<n>/state'
+   ...
+   [INFO]  rpmsg device path='/dev/rpmsg0'
+   ...
+   [INFO]  send_message  Size: 21
+   [INFO]  RPMSG RX  len: 22  msg: 'Hello from Zephyr!  1'
+   [INFO]  send_message  Size: 21
+   [INFO]  RPMSG RX  len: 22  msg: 'Hello from Zephyr!  2'
+   ```
+
+   UART1 shows the other side:
+
+   ```
+   [INFO]  VIRTIO config is ready ...
+   ...
+   [INFO]  Created endpoint for service 'rpmsg-raw'
+   [INFO]  RPMSG RX  len: 21  msg: 'Hello from Linux!  1'
+   [INFO]  Endpoint for service 'rpmsg-raw' is connected
+   [INFO]  send_message  Size: 22
+   ```
+
+   The remote processor is now `attached`, and `/dev/rpmsg0` and
+   `/dev/rpmsg_ctrl0` exist. The kernel log shows
+   `remote processor 0001:00:00.0 is now attached` and
+   `creating channel rpmsg-raw`. It also shows `Allocated carveout doesn't
+   fit device address request` twice on each attach; the messages pass
+   regardless.
+
+7. **Stop: detach Linux, check that it is detached, then destroy the cell:**
+
+   **Board**
+
+   ```bash
+   echo detach > /sys/class/remoteproc/remoteproc$n/state
+   cat /sys/class/remoteproc/remoteproc$n/state
+   ```
+
+   Linux reports `detached; the inmate is still running`, and `/dev/rpmsg0`
+   goes away. When the state reads `detached`, destroy the cell; if it
+   still reads `attached`, write `detach` again first:
+
+   **Board**
+
+   ```bash
+   jailhouse cell destroy zephyr
+   ```
+
+   The ivshmem device stays in Linux until `jailhouse disable`.
+
+> **Caution:** Detach before you destroy the cell, and run `rpmsg-test` once
+> per attach. The driver does not support `stop` (`Invalid argument`). If
+> the cell is destroyed first, the remote processor stays `attached` with a
+> stale `/dev/rpmsg0`, and each further run of `rpmsg-test` adds another
+> attach: the next Zephyr waits at `Awaiting VIRTIO config ready` and Linux
+> logs `msg received with no recipient`. To recover, write `detach` once
+> for each attach, until the state reads `detached`.
+
 ---
 
 ## 8. Troubleshooting
@@ -1138,6 +1327,7 @@ share the audio front end with Linux.
 | `genio-flash` waits, or reports that board control failed | The board is not in download mode | Use the Download and RST buttons (see [Section 4.3](#43-flashing-with-the-jailhouse-overlay)) |
 | `modprobe jailhouse` fails: module not found | The image was built without Jailhouse | Add `IMAGE_INSTALL:append = " jailhouse"`, rebuild and flash (see [Section 3.3](#33-configuring-the-build)) |
 | `jailhouse enable` fails, and the kernel log shows `jailhouse: request_mem_region failed for hypervisor memory.` | The Jailhouse overlay is not loaded, so Linux uses the hypervisor memory | Check `fw_printenv list_dtbo` and `/proc/iomem` (see [Section 4.4](#44-verifying-the-image-on-the-board)); flash again with `--load-dtbo` |
+| `jailhouse enable` fails with `Invalid argument`, and `jailhouse console` shows `Cell "genio-<board>-evk" has vendor resources, but no unit handles them` | The hypervisor was built without `CONFIG_SOC=mt8188`, so it has no MediaTek units | Build Jailhouse with `CONFIG_SOC=mt8188`, as the IoT Yocto recipe does |
 | `jailhouse cell create` fails with `Invalid argument` | Jailhouse is not enabled (for example, after a reboot) | Enable Jailhouse (see [Section 6.2](#62-enabling-jailhouse)) |
 | `jailhouse cell create` fails with `File exists` | A cell with the same name exists; all Zephyr cells are named `zephyr` | Destroy the existing cell first (`jailhouse cell destroy zephyr`) |
 | `jailhouse cell create` fails with `Device or resource busy` | Another cell uses the same CPUs or pins, for example a `uart-demo` cell, which also uses CPU 3 and UART1 | Destroy the other cell first |
@@ -1145,6 +1335,7 @@ share the audio front end with Linux.
 | No output on UART1, cell `running` | Wrong serial device or baud rate; another program reads the port; the image was loaded without `-a 0x8000`; the image was built for another board; an SMP image runs in a cell on other CPUs, such as `-zephyr-a78` | Check the device and 115200 baud; run `fuser /dev/ttyUSB<n>` on the host; reload with `-a 0x8000`; rebuild for the right board target; run SMP images only in the `-smp` cells (see [Section 6.5](#65-running-zephyr-on-two-cores-smp)) |
 | UART1 shows `Failed to boot secondary CPU core 1 (MPID:0x200)` and a kernel panic; the cell stays `running` | An SMP image runs in a one-core cell, such as `-zephyr`: the hypervisor refuses to start CPU 2, which the cell does not own | Use the `-zephyr-smp` or `-zephyr-afe-smp` cell, or build the image for the single-core target (see [Section 6.5](#65-running-zephyr-on-two-cores-smp)) |
 | `uart-demo` prints unreadable characters | UART1 is still in the high-speed mode that Zephyr set, or the terminal is not at 38400 baud | Run `devmem2 0x11001224 w 0` on the board; set the terminal to 38400 baud (see [Section 6.10](#610-optional-checking-a-cell-with-the-uart-demo-inmate)) |
+| After a new `-zephyr-rpmsg` cell, Zephyr stays at `Awaiting VIRTIO config ready`, and Linux logs `msg received with no recipient` | The previous cell was destroyed while Linux was attached, so the remote processor is still `attached` | Write `detach` to `/sys/class/remoteproc/remoteproc<n>/state` until it reads `detached`, then run `rpmsg-test` again (see [Section 7.4](#74-rpmsg-with-linux)) |
 | `jailhouse cell stats` fails with `setupterm: could not find terminal` | The command was started without a terminal, or with a terminal type unknown to the board | Use `adb shell -t` or an interactive `adb shell`, and set `TERM=xterm` if needed |
 | Audio samples run but capture silence or report a DMA position outside the buffer | The audio power domain is off, the cell is not an AFE cell, the image was built without `mtk-afe`, or wires are missing | Work through [Section 7.3](#73-audio-samples) |
 | Zephyr code runs slower than expected, or its processing times vary from run to run | Linux's `schedutil` governor lowers the clock of Zephyr's cluster while Linux is idle | Select the `performance` governor (see [Section 6.4](#64-choosing-a-cell)) |
@@ -1163,8 +1354,8 @@ The Jailhouse overlay removes four areas from the memory that Linux may use:
 |---|---|---|
 | `0x6ac00000` - `0x6affffff` | 4 MiB | Jailhouse hypervisor |
 | `0x6b000000` - `0x6b7fffff` | 8 MiB | Inmate memory of the Zephyr cells; Zephyr sees it at `0x8000` |
-| `0x6b800000` - `0x6b9fffff` | 2 MiB | Virtual PCI window (reserved) |
-| `0x6ba00000` - `0x6bafffff` | 1 MiB | Inter-cell shared memory (reserved, `no-map`) |
+| `0x6b800000` - `0x6b9fffff` | 2 MiB | Virtual PCI host: configuration space and the BARs of the ivshmem device |
+| `0x6ba00000` - `0x6bafffff` | 1 MiB | Shared memory of the ivshmem device, between the root cell and a `-zephyr-rpmsg` cell (reserved, `no-map`) |
 
 The AFE cells also share the audio DMA memory at `0x61000000` (8 MiB) with
 Linux.
@@ -1176,17 +1367,20 @@ The `jailhouse` package installs these cell configurations in
 
 | File | Cell name | Description |
 |---|---|---|
-| `genio-<board>-evk.cell` | `genio-<board>-evk` | Root cell (system configuration): Linux, all CPUs. Used by `jailhouse enable`. |
+| `genio-<board>-evk.cell` | `genio-<board>-evk` | Root cell (system configuration): Linux, all CPUs, and a virtual PCI host with one ivshmem device. Used by `jailhouse enable`. |
 | `genio-<board>-evk-zephyr.cell` | `zephyr` | Zephyr on CPU 3 |
 | `genio-<board>-evk-zephyr-a78.cell` | `zephyr` | Zephyr on a Cortex-A78 (CPU 5 / CPU 7) |
 | `genio-<board>-evk-zephyr-smp.cell` | `zephyr` | Zephyr on CPU 2 and 3 |
 | `genio-<board>-evk-zephyr-afe.cell` | `zephyr` | As `-zephyr`, plus the audio front end |
 | `genio-<board>-evk-zephyr-afe-a78.cell` | `zephyr` | As `-zephyr-a78`, plus the audio front end |
 | `genio-<board>-evk-zephyr-afe-smp.cell` | `zephyr` | As `-zephyr-smp`, plus the audio front end |
+| `genio-<board>-evk-zephyr-rpmsg.cell` | `zephyr` | As `-zephyr`, plus the ivshmem device shared with Linux, for RPMsg |
 | `genio-<board>-evk-uart-demo.cell` | `uart-demo` | The `uart-demo` inmate on CPU 3 |
 
-The directory also contains cell configurations for other platforms, which
-are not used on the Genio EVKs.
+The image contains only the cells of the board it was built for. The
+hypervisor, the driver, the tool and the cells of a release belong together:
+the cell configuration format of MediaTek Jailhouse 1.0 is revision 15, and
+cells built from upstream Jailhouse or from other trees do not load.
 
 ### 9.3 Resources of the Zephyr cells
 
@@ -1208,11 +1402,31 @@ The AFE cells additionally grant:
 | Secure monitor call | `MTK_SIP_AUDIO_CONTROL` |
 | eTDM pins | GPIO 4-6, 11, 107-110, 114-117 and 125-128 |
 
+The `-zephyr-rpmsg` cells additionally grant:
+
+| Resource | Details |
+|---|---|
+| ivshmem device | Virtual PCI device `00:00.0`, the second of its two peers; in Linux, the first peer, it is `0001:00:00.0` |
+| Shared memory | At `0x6ba00000`: a 4 KiB state table (read-only), 768 KiB that both peers can write, and 16 KiB of output for each peer, writable by that peer only |
+| Interrupt | The device's interrupt, SPI 74 (GIC interrupt ID 106) of the cell; in Linux, SPI 72 (ID 104) |
+
 Jailhouse mediates the GPIO, external interrupt and clock gate registers that
 Linux and the cells share: each cell can read and change only the fields of
 the pins and clock gates it owns. External interrupts of a cell's pins are
 delivered to the cell. The pin configuration registers (pull, drive strength,
 input enable) are not mediated and stay with Linux.
+
+To adapt a cell, for example to give Zephyr other pins, edit its block in
+the table of your board in MediaTek Jailhouse,
+`configs/arm64/genio-<board>-evk-cells.c`, and rebuild Jailhouse; in IoT
+Yocto, add the change as a patch to the `jailhouse` recipe, for example in a
+`.bbappend`. The cell keeps its file name. The comments at the top of the
+table and of `configs/arm64/genio-evk.h` describe the lists. The build
+checks the CPUs, pins and interrupts; `jailhouse-config-check` checks the
+cells against each other and against the root cell (see the repository's
+`CONTRIBUTING.md`). The CPUs of the `-smp` cells must be the cores that the
+Zephyr SMP board variants enable, in `boards/mediatek/common/genio-evk-smp.dtsi`
+of the Genio Zephyr tree.
 
 ### 9.4 CPU and MPIDR map
 
@@ -1277,6 +1491,20 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 - Multi-core cells start their CPUs only through PSCI over `smc`.
 - Linux can change the pin configuration (pull, drive strength, input
   enable) of the cells' pins; Jailhouse does not mediate these registers.
+- Linux cannot use the hardware debounce or the event registers of its
+  external interrupts: Jailhouse ignores Linux's writes to them.
+- Keeping Linux's power management away from a cell's devices, such as the
+  audio front end, relies on Linux: the power domains' bus protection stays
+  with Linux.
+- The AFE cells do not get the audio front end's interrupt; the Zephyr audio
+  driver polls.
+- The AFE cells can write the whole reset block (`toprgu`), so that Zephyr
+  can reset the audio subsystem. Such a cell can also reset other subsystems
+  and reach the watchdog; trust AFE cells accordingly.
+- Linux does not notice when a `-zephyr-rpmsg` cell is destroyed: detach
+  Linux first (see [Section 7.4](#74-rpmsg-with-linux)).
+- The MediaTek Jailhouse release notes list all limitations of the release
+  (see [Section 10](#10-related-documentation)).
 
 ---
 
@@ -1294,6 +1522,7 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 | Genio Zephyr samples, with the hardware setup in `doc/hardware.md` and the audio prerequisites in `audio/README.md` | <https://github.com/mtk-zephyr/samples> |
 | Genio Zephyr tree | <https://github.com/mtk-zephyr/mtk-zephyr> |
 | MediaTek Jailhouse | <https://github.com/mtk-jailhouse/jailhouse> |
+| MediaTek Jailhouse `mtk-v1.0` release notes | <https://github.com/mtk-jailhouse/jailhouse/blob/mtk-v1.0/Documentation/mtk-v1.0-release-notes.md> |
 | Jailhouse project | <https://github.com/siemens/jailhouse> |
 
 [iot-get-started]: https://genio.mediatek.com/doc/iot-yocto/latest/sw/yocto/get-started.html
@@ -1313,3 +1542,4 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 |---|---|---|
 | 0.9 | 2026-10-04 | Initial draft for review |
 | 0.9.1 | 2026-10-08 | UART0 named by its board label only. Linux sets the clocks of both CPU clusters; use the `performance` governor for measurements (Sections 6.4, 6.6, 9.7). How an SMP image fails in a cell other than an SMP cell (Section 6.5). Two new troubleshooting entries. The hypervisor of mtk-v1.0: its start-up messages (Section 6.2), and pin configuration registers that stay with Linux (Sections 9.3, 9.7). |
+| 1.0 | 2026-10-08 | First release, for MediaTek Jailhouse `mtk-v1.0.0` and Genio Zephyr `mtk-genio-v1.0.0`. RPMsg with Linux (Section 7.4). The layer's `jailhouse` recipe builds the release branch `mtk-v1.0` and installs the cells of one board (Sections 2.2, 3.3, 4.4, 9.2). The Zephyr workspace is created at the release tag (Section 5.2). Known limitations in step with the release notes (Section 9.7). Two new troubleshooting entries. |
