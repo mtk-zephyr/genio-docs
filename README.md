@@ -39,7 +39,7 @@ git push origin v1.0
 ```
 
 The workflow then creates the release `v1.0` with the PDF attached. A tag
-with a suffix, such as `v1.1-rc1`, becomes a pre-release. The link above
+with a suffix, such as `v26.1-rc1`, becomes a pre-release. The link above
 always points to the latest full release.
 
 Keep the revision history at the end of the guide in step with the tags.

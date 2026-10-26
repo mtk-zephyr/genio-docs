@@ -4,11 +4,11 @@
 
 | | |
 |---|---|
-| Document status | Released |
+| Document status | Pre-release v26.1-rc1, final at v26.1 |
 | Applies to | Genio 510 EVK (MT8370), Genio 700 EVK (MT8390) |
-| Software | IoT Yocto v26.0 (`rity-scarthgap-v26.0`) with `meta-mediatek-experimental`; MediaTek Jailhouse `mtk-v1.0.0`; MediaTek Genio Zephyr `mtk-genio-v1.0.0` (Zephyr 4.5) with Zephyr SDK 1.0.1 |
+| Software | IoT Yocto v26.1 (`rity-scarthgap-v26.1`) with the `jailhouse` feature; MediaTek Jailhouse `v26.1`; MediaTek Genio Zephyr (Zephyr 4.5), tree `2e9e70f0a16c` and samples `b962ff34104b`, with Zephyr SDK 1.0.1 |
 | License | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| Last updated | 2026-10-08 |
+| Last updated | 2026-10-26 |
 
 ---
 
@@ -21,9 +21,10 @@
 5. [Building Zephyr applications](#5-building-zephyr-applications)
 6. [Running Zephyr under Jailhouse](#6-running-zephyr-under-jailhouse)
 7. [Running the Genio Zephyr samples](#7-running-the-genio-zephyr-samples)
-8. [Troubleshooting](#8-troubleshooting)
-9. [Reference](#9-reference)
-10. [Related documentation](#10-related-documentation)
+8. [A watchdog for the cells](#8-a-watchdog-for-the-cells)
+9. [Troubleshooting](#9-troubleshooting)
+10. [Reference](#10-reference)
+11. [Related documentation](#11-related-documentation)
 
 ---
 
@@ -38,13 +39,14 @@ on dedicated CPU cores, isolated by the Jailhouse partitioning hypervisor.
 
 It covers the complete workflow on your own Linux workstation:
 
-- building an IoT Yocto image that includes Jailhouse, using the
-  `meta-mediatek-experimental` layer;
+- building an IoT Yocto image that includes Jailhouse, with the `jailhouse`
+  feature of IoT Yocto;
 - flashing the image with the Jailhouse device-tree overlay;
 - building Zephyr applications and the Genio Zephyr samples;
 - enabling Jailhouse, running Zephyr in a cell, and watching its console;
-- running Zephyr on a Cortex-A78 core, on two Cortex-A55 cores (SMP), and
-  with the audio front end (AFE).
+- running Zephyr on a Cortex-A78 core, on two Cortex-A55 cores (SMP), with
+  the audio front end (AFE), and with RPMsg to Linux;
+- giving each Zephyr cell a watchdog, and restarting the cells that fail.
 
 The generic IoT Yocto steps (host preparation, fetching the BSP, flashing
 tools, board connection) are described in the
@@ -129,18 +131,20 @@ Cortex-A55 cores (see [Section 6.4](#64-choosing-a-cell)).
 
 | Component | Source | Notes |
 |---|---|---|
-| IoT Yocto BSP v26.0 | `https://gitlab.com/mediatek/aiot/bsp/manifest.git`, tag `rity-scarthgap-v26.0` | Yocto Project 5.0 (Scarthgap), Linux 6.6 |
-| `meta-mediatek-experimental` | `https://gitlab.com/mediatek/aiot/rity/meta-mediatek-experimental`, branch `scarthgap` | Provides the `jailhouse` recipe (MediaTek Jailhouse), the Jailhouse kernel support and the Jailhouse device-tree overlays |
-| MediaTek Jailhouse | `https://github.com/mtk-jailhouse/jailhouse`, release `mtk-v1.0.0` on the branch `mtk-v1.0` | Built by the `jailhouse` recipe from the release branch; you do not need to fetch it yourself |
-| Genio Zephyr tree | `https://github.com/mtk-zephyr/mtk-zephyr`, tag `mtk-genio-v1.0.0` | Zephyr 4.5 with the Genio board support |
-| Genio Zephyr samples | `https://github.com/mtk-zephyr/samples`, tag `mtk-genio-v1.0.0` | West manifest repository; fetches the Zephyr tree and its modules |
+| IoT Yocto BSP v26.1 | `https://gitlab.com/mediatek/aiot/bsp/manifest.git`, tag `rity-scarthgap-v26.1` | Yocto Project 5.0 (Scarthgap), Linux 6.6 |
+| `meta-mediatek-bsp` and `meta-rity` | Part of the BSP manifest | With the `jailhouse` distribution feature: the `jailhouse` recipe (MediaTek Jailhouse), the Jailhouse kernel support and the device-tree overlay `jailhouse.dtbo` (`meta-mediatek-bsp`), and Jailhouse in `rity-bringup-image` (`meta-rity`) |
+| MediaTek Jailhouse | `https://github.com/mtk-jailhouse/jailhouse`, release tag `v26.1` on the branch `scarthgap` | Built by the `jailhouse` recipe from the release tag; you do not need to fetch it yourself |
+| Genio Zephyr tree | `https://github.com/mtk-zephyr/mtk-zephyr`, branch `mtk-genio-dev` at commit `2e9e70f0a16c` | Zephyr 4.5 with the Genio board support |
+| Genio Zephyr samples | `https://github.com/mtk-zephyr/samples`, branch `main` at commit `b962ff34104b` | West manifest repository; fetches the Zephyr tree and its modules |
 | Zephyr SDK | Installed with `west sdk install` | Version 1.0.1, as set in the tree's `SDK_VERSION` file; only the `aarch64-zephyr-elf` toolchain is needed |
 
-> **Note:** This guide creates the Zephyr workspace at the samples tag
-> `mtk-genio-v1.0.0` (see [Section 5.2](#52-creating-the-workspace)), which
-> selects the Genio Zephyr tree at its tag of the same name. The development
-> branches `mtk-genio-dev` of both repositories are rebased and force-pushed;
-> do not base a product on them.
+> **Note:** The Genio Zephyr side has no release tag for MediaTek Jailhouse
+> v26.1 yet. This guide creates the Zephyr workspace at the two commits that
+> v26.1 was tested with, as its release notes name them (see
+> [Section 5.2](#52-creating-the-workspace)); a later revision of the guide
+> names the Zephyr tag. The head of the development branch `mtk-genio-dev`
+> of the Genio Zephyr tree moves on, and may be rewritten before the Zephyr
+> tag; the commits of this guide are the tested ones.
 
 ### 2.3 Host computer
 
@@ -197,15 +201,16 @@ Follow these sections of the IoT Yocto Get Started guide:
 1. [Linux build environment][iot-build-env]: install the host packages and
    the `repo` tool.
 2. [Build from Source Code][iot-build-code], sections *Project Root*,
-   *Download the Recipes* and *Configure Build Environment*. With the v26.0
-   release, these steps are:
+   *Download the Recipes* and *Configure Build Environment*. Use IoT Yocto
+   v26.1, the first release with the Jailhouse feature of
+   [Section 3.2](#32-enabling-the-jailhouse-feature). The steps are:
 
    **Host**
 
    ```bash
    mkdir iot-yocto && cd iot-yocto
    export PROJ_ROOT=$(pwd)
-   repo init -u https://gitlab.com/mediatek/aiot/bsp/manifest.git -b refs/tags/rity-scarthgap-v26.0
+   repo init -u https://gitlab.com/mediatek/aiot/bsp/manifest.git -b refs/tags/rity-scarthgap-v26.1
    repo sync
    export TEMPLATECONF=$PROJ_ROOT/src/meta-rity/meta/conf/templates/default/
    source src/poky/oe-init-build-env build
@@ -225,11 +230,29 @@ Follow these sections of the IoT Yocto Get Started guide:
 Jailhouse and Zephyr need no NDA repositories. Do not set `NDA_BUILD` unless
 you need it for other reasons.
 
-### 3.2 Adding the `meta-mediatek-experimental` layer
+### 3.2 Enabling the Jailhouse feature
 
-The `meta-mediatek-experimental` layer is not part of the BSP manifest.
-Clone it next to the other layers, on the branch that matches the BSP
-(`scarthgap`), and add it to the build:
+Jailhouse is part of the IoT Yocto layers as an optional distribution
+feature, `jailhouse`, which is off by default. Add the following line to
+`$BUILD_DIR/conf/local.conf`:
+
+```
+DISTRO_FEATURES:append = " jailhouse"
+```
+
+The leading space inside the quotes is required. No other layer and no
+`IMAGE_INSTALL` line are needed: the feature adds Jailhouse to the image (see
+[Section 3.3](#33-configuring-the-build)). Without this line, the build
+contains nothing of Jailhouse, and the image is the stock IoT Yocto image.
+
+#### With IoT Yocto v26.0
+
+IoT Yocto v26.0 (`rity-scarthgap-v26.0`) has no Jailhouse feature. With
+v26.0, Jailhouse comes from the `meta-mediatek-experimental` layer and the
+line `IMAGE_INSTALL:append = " jailhouse"` instead of the feature line. That
+layer builds MediaTek Jailhouse 1.0 (`mtk-v1.0.0`), not v26.1: it has no
+watchdog for the cells, and its cells are named `zephyr`. Revision 1.0 of
+this guide describes it. The layer is added with:
 
 **Host**
 
@@ -238,34 +261,8 @@ git clone -b scarthgap https://gitlab.com/mediatek/aiot/rity/meta-mediatek-exper
 bitbake-layers add-layer $PROJ_ROOT/src/meta-mediatek-experimental
 ```
 
-Check that the layer is active:
-
-**Host**
-
-```bash
-bitbake-layers show-layers | grep experimental
-```
-
-The output lists the layer with the collection name `experimental` and
-priority 8.
-
-Check that the layer builds MediaTek Jailhouse 1.0, which this guide
-describes:
-
-**Host**
-
-```bash
-grep '^BRANCH' $PROJ_ROOT/src/meta-mediatek-experimental/recipes-kernel/jailhouse/jailhouse_git.bb
-```
-
-The output is `BRANCH = "mtk-v1.0"`. If it names another branch, such as
-`MTK-Genio`, the clone is an older revision of the layer, which builds an
-earlier Jailhouse tree: update it with
-`git -C $PROJ_ROOT/src/meta-mediatek-experimental pull` and check again.
-
-> **Note:** As its name says, the layer carries features that are not yet
-> part of the main IoT Yocto layers. Use the branch that matches your BSP
-> release.
+The overlay is then named `6.6-Genio-510-Jailhouse-DT.dtbo` or
+`6.6-Genio-700-Jailhouse-DT.dtbo` instead of `jailhouse.dtbo`.
 
 ### 3.3 Configuring the build
 
@@ -280,29 +277,21 @@ before you build:
 export MACHINE=genio-510-evk    # or: genio-700-evk
 ```
 
-The Jailhouse recipe supports only these two machines among the Genio EVKs.
+Jailhouse supports only these two machines among the Genio EVKs. Use these
+names: the other names of the same boards, `mt8370-evk` and `mt8390-evk`,
+are not supported, because the recipe installs the cells by the machine
+name.
 
-#### Enable Jailhouse
+#### What the feature enables
 
-Add the following line to `$BUILD_DIR/conf/local.conf`:
-
-```
-IMAGE_INSTALL:append = " jailhouse"
-```
-
-The leading space inside the quotes is required.
-
-This one setting turns on everything Jailhouse needs, because the layer
-makes all of it depend on `jailhouse` being in `IMAGE_INSTALL`:
+The `jailhouse` feature of [Section 3.2](#32-enabling-the-jailhouse-feature)
+turns on everything Jailhouse needs, for these two machines only:
 
 | What | Effect |
 |---|---|
-| `jailhouse` package | The hypervisor firmware, the Jailhouse kernel module (`jailhouse.ko`), the `jailhouse` command-line tool, the nine cell configurations of the board you build for (`MACHINE`) and the demo inmates |
-| Linux kernel patches and configuration | Kernel symbol exports for the Jailhouse driver; the kernel stays at EL1 (no VHE) so that Jailhouse can take over EL2; the `mtk-jh-rproc` remote processor driver and RPMsg support (see [Section 7.4](#74-rpmsg-with-linux)); virtual PCI support |
-| Device-tree overlay `6.6-Genio-510-Jailhouse-DT.dtbo` or `6.6-Genio-700-Jailhouse-DT.dtbo` | Removes the hypervisor and inmate memory from Linux. It is built with the image but must be selected when you flash (see [Section 4.3](#43-flashing-with-the-jailhouse-overlay)) |
-
-Without the `IMAGE_INSTALL` line, adding the layer changes nothing related to
-Jailhouse.
+| `jailhouse` package | The hypervisor firmware, the Jailhouse kernel module (`jailhouse.ko`), the `jailhouse` command-line tool, the nine cell configurations of the board you build for (`MACHINE`), the demo inmates, and the cell restart daemon with its systemd unit (see [Section 8.4](#84-restarting-failed-cells)). It is installed in `rity-bringup-image` and the images based on it. |
+| Linux kernel patches and configuration | Kernel symbol exports for the Jailhouse driver; the kernel stays at EL1 (no VHE) so that Jailhouse can take over EL2; the `mtk-jh-rproc` remote processor driver, a module that loads when Jailhouse is enabled, and RPMsg support (see [Section 7.4](#74-rpmsg-with-linux)); virtual PCI support |
+| Device-tree overlay `jailhouse.dtbo` | Removes the hypervisor and inmate memory from Linux. It is built with the image but must be selected when you flash (see [Section 4.3](#43-flashing-with-the-jailhouse-overlay)) |
 
 #### Optional settings
 
@@ -333,7 +322,7 @@ These settings are not required. They reduce build time and resource use.
 This guide uses `rity-bringup-image`: a console image with debug and
 development tools and the U-Boot environment tools, and without the AI,
 multimedia and graphics stacks of `rity-demo-image`. It builds considerably
-faster. The `IMAGE_INSTALL` setting applies to every image, so you can build
+faster. The feature applies to every image based on it, so you can build
 `rity-demo-image` instead if you need its features.
 
 **Host**
@@ -357,11 +346,10 @@ The images are in `$BUILD_DIR/tmp/deploy/images/$MACHINE/`. Check that:
   **Host**
 
   ```bash
-  ls $BUILD_DIR/tmp/deploy/images/$MACHINE/devicetree/ | grep Jailhouse
+  ls $BUILD_DIR/tmp/deploy/images/$MACHINE/devicetree/ | grep jailhouse
   ```
 
-  The output is `6.6-Genio-510-Jailhouse-DT.dtbo` or
-  `6.6-Genio-700-Jailhouse-DT.dtbo`;
+  The output is `jailhouse.dtbo`;
 - the image contains Jailhouse:
 
   **Host**
@@ -418,18 +406,18 @@ selected.
    **Host**
 
    ```bash
-   genio-flash -i rity-bringup-image --load-dtbo 6.6-Genio-510-Jailhouse-DT.dtbo --dry-run
+   genio-flash -i rity-bringup-image --load-dtbo jailhouse.dtbo --dry-run
    ```
 
-   On the Genio 700 EVK, use `6.6-Genio-700-Jailhouse-DT.dtbo`. To see all
-   available overlays, run `genio-flash -i rity-bringup-image --list-dtbo`.
+   The overlay has the same name on both boards. To see all available
+   overlays, run `genio-flash -i rity-bringup-image --list-dtbo`.
 
 3. Flash:
 
    **Host**
 
    ```bash
-   genio-flash -i rity-bringup-image --load-dtbo 6.6-Genio-510-Jailhouse-DT.dtbo
+   genio-flash -i rity-bringup-image --load-dtbo jailhouse.dtbo
    ```
 
 4. Put the board into download mode when `genio-flash` waits for it, as
@@ -446,7 +434,7 @@ and then reboots the board.
 
 > **Caution:** The overlay list is stored in the U-Boot environment
 > (`list_dtbo`). If you later change the overlays, for example to add one,
-> keep `6.6-Genio-<board>-Jailhouse-DT.dtbo` in the list. Without it, Linux
+> keep `jailhouse.dtbo` in the list. Without it, Linux
 > uses the hypervisor and inmate memory, and Jailhouse cannot be enabled.
 
 ### 4.4 Verifying the image on the board
@@ -471,8 +459,7 @@ The following checks run on the board.
    fw_printenv list_dtbo
    ```
 
-   The list contains `6.6-Genio-510-Jailhouse-DT.dtbo` (or
-   `6.6-Genio-700-Jailhouse-DT.dtbo`).
+   The list contains `jailhouse.dtbo`.
 
 2. Linux does not use the Jailhouse memory:
 
@@ -500,12 +487,23 @@ The following checks run on the board.
 
    ```bash
    modinfo -n jailhouse
+   modinfo -F version jailhouse
    ls /usr/share/jailhouse/cells/
    ```
 
    The first command prints the path of `jailhouse.ko` below
-   `/lib/modules/$(uname -r)/`; the second lists the nine cells of your board
-   (see [Section 9.2](#92-cells)).
+   `/lib/modules/$(uname -r)/`, the second the release, `v26.1 (0-g<commit>)`,
+   and the third lists the nine cells of your board (see
+   [Section 10.2](#102-cells)).
+
+   > **Note:** The driver, `jailhouse --version` and the hypervisor's start-up
+   > line report the same version. A build at the release tag reports
+   > `v26.1 (0-g<commit>)`, and a build at a release-candidate tag
+   > `v26.1-rc<N> (0-g<commit>)`: builds of the pre-release `v26.1-rc1`
+   > report `v26.1-rc1 (0-g2c8e5f75)`. Builds of later commits of the branch
+   > `scarthgap` report the last tag and the number of commits since it, for
+   > example `v26.1 (<n>-g<commit>)`, and builds of commits before the first
+   > `v26.1` tag report `26.1 (<commit>)`.
 
 ---
 
@@ -536,8 +534,10 @@ dtc --version
 ### 5.2 Creating the workspace
 
 The Genio samples repository is the west manifest of the workspace. One
-`west init` fetches the Genio Zephyr tree, the modules it needs and the
-samples, at the matching revisions of the release `mtk-genio-v1.0.0`.
+`west init` and `west update` fetch the Genio Zephyr tree, the modules it
+needs and the samples. This guide uses the commits that MediaTek Jailhouse
+v26.1 was tested with (see [Section 2.2](#22-software-components)): the
+samples at `b962ff34104b` and the Genio Zephyr tree at `2e9e70f0a16c`.
 
 1. Create the workspace directory and a Python virtual environment, and
    install west:
@@ -554,14 +554,22 @@ samples, at the matching revisions of the release `mtk-genio-v1.0.0`.
    Activate the virtual environment (`source .venv/bin/activate`) in every
    new shell before you use west.
 
-2. Initialize and fetch the workspace:
+2. Initialize and fetch the workspace, and put the samples and the tree on
+   the tested commits:
 
    **Host**
 
    ```bash
-   west init -m https://github.com/mtk-zephyr/samples --mr mtk-genio-v1.0.0 .
+   west init -m https://github.com/mtk-zephyr/samples --mr main .
+   git -C samples checkout b962ff34104b0348a406526ef50544e21aac851f
    west update
+   git -C zephyr checkout 2e9e70f0a16c9497f0e04a4c0f2e823d115e72b2
    ```
+
+   The samples' manifest selects the branch `mtk-genio-dev` of the Genio
+   Zephyr tree; the last command puts the tree on the tested commit. A later
+   `west update` moves the tree to the head of the branch again; repeat the
+   last command after it.
 
    To save time and disk space, you can fetch only the latest history:
    `west update --narrow -o=--depth=1`.
@@ -681,7 +689,7 @@ your own application, keep in mind:
   the image is loaded and started. The image and all its memory must fit
   into this window.
 - **Devices.** Zephyr may use only the devices its cell grants (see
-  [Section 9.3](#93-resources-of-the-zephyr-cells)). Access to any other
+  [Section 10.3](#103-resources-of-the-zephyr-cells)). Access to any other
   device either has no effect or stops the cell.
 - **GPIO.** The board devicetree leaves the GPIO banks disabled, because the
   pins Zephyr may use depend on the cell. An application that uses GPIO 38
@@ -729,6 +737,15 @@ The Linux console is on UART0, at **921600 baud**. The
 hypervisor prints its messages there too, and to its own console buffer
 (see [Section 6.7](#67-monitoring)).
 
+> **Caution:** Linux has a driver for UART1, `/dev/ttyS1` on the board. Do
+> not open `ttyS1` from Linux, for example with `stty`, `echo` or a login
+> prompt: Linux then leaves UART1 with its DMA and high-speed mode set until
+> the next boot. Zephyr images built from the Genio Zephyr tree of this guide
+> (see [Section 2.2](#22-software-components)) reset UART1's state when they
+> start, so a Zephyr cell still works. Older Zephyr images then
+> receive nothing on UART1, and other inmates such as `uart-demo` print
+> unreadable characters; reboot the board before you run them.
+
 ### 6.2 Enabling Jailhouse
 
 Open a shell on the board with `adb shell`, and run:
@@ -766,17 +783,18 @@ jailhouse console
 ```
 
 ```
-Initializing Jailhouse hypervisor mtk-v1.0.0 (0-g<commit>) on CPU <n>
+Initializing Jailhouse hypervisor v26.1 (0-g<commit>) on CPU <n>
 ...
 Initializing unit: mt8188_clk
 Initializing unit: mt8188_eint
 Initializing unit: mt8188_gpio
+Initializing unit: mt8188_wdt
 ...
 Activating hypervisor
 ```
 
-The version names the release. A build from a later commit of the release
-branch shows the number of commits since the release instead of `0`.
+With a release candidate, the first line names it, for example
+`v26.1-rc1 (0-g2c8e5f75)` (see [Section 4.4](#44-verifying-the-image-on-the-board)).
 
 > **Note:** Enable Jailhouse once after each boot. `jailhouse cell list`
 > prints nothing, and succeeds, when Jailhouse is not enabled.
@@ -802,7 +820,9 @@ branch shows the number of commits since the release instead of `0`.
    ```
 
    - `cell create` takes CPU 3, the cell's memory and its devices away from
-     Linux. The cell is named `zephyr`; all Zephyr cells use this name.
+     Linux. Each cell is named after its file without the board prefix:
+     this one is `zephyr`, the Cortex-A78 cell `zephyr-a78`, and so on (see
+     [Section 10.2](#102-cells)). The other commands name the cell.
    - `cell load` copies the image into the cell's memory. The address
      `-a 0x8000` is required: it is where the cell starts executing.
    - `cell start` starts the cell's CPU.
@@ -833,8 +853,9 @@ branch shows the number of commits since the release instead of `0`.
 
 **Helper script.** The samples repository contains
 `samples/tools/genio-inmate.sh`, which runs on the board. It loads the driver,
-enables Jailhouse if needed, replaces any existing `zephyr` cell, and then
-creates, loads and starts the cell. Its optional second argument selects
+enables Jailhouse if needed, replaces any existing Zephyr cell, and then
+creates, loads and starts the cell; it reads the cell's name from the cell
+file. Its optional second argument selects
 another cell:
 
 **Host**
@@ -863,7 +884,7 @@ of them can exist at a time.
 
 `<board>` is `510` or `700`. The `-afe` cells grant the same resources as
 their counterparts plus the audio front end (see
-[Section 9.3](#93-resources-of-the-zephyr-cells)).
+[Section 10.3](#103-resources-of-the-zephyr-cells)).
 
 To use a different cell, destroy the current one first (see
 [Section 6.8](#68-stopping-and-restarting-a-cell)), then create the new one:
@@ -873,8 +894,8 @@ To use a different cell, destroy the current one first (see
 ```bash
 jailhouse cell destroy zephyr
 jailhouse cell create /usr/share/jailhouse/cells/$(uname -n)-zephyr-a78.cell
-jailhouse cell load zephyr /root/zephyr.bin -a 0x8000
-jailhouse cell start zephyr
+jailhouse cell load zephyr-a78 /root/zephyr.bin -a 0x8000
+jailhouse cell start zephyr-a78
 ```
 
 **CPU frequency.** Linux sets the clocks of both CPU clusters, the
@@ -900,6 +921,16 @@ The last command shows the frequency of each cluster, in kHz. The setting
 does not persist across a reboot; write `schedutil` to return to the default.
 Thermal management can still lower the frequency when the SoC is hot.
 
+A cell on the Cortex-A55 cluster always runs at the clock that Linux selects
+for that cluster, because Linux keeps CPU 0. A cell that takes both
+Cortex-A78 cores, such as a cell of your own (see
+[Section 10.3](#103-resources-of-the-zephyr-cells)), is different: it freezes
+the A78 clock at the operating point in force when the last A78 left Linux.
+That is about 650 MHz if the cluster was idle under `schedutil`, and the
+maximum under `performance`: 2.0 GHz on the Genio 510 EVK, 2.2 GHz on the
+Genio 700 EVK. Select the governor before you create such a cell; while it
+exists, Linux can neither change nor throttle the A78 clock.
+
 ### 6.5 Running Zephyr on two cores (SMP)
 
 Build the image for the SMP target (see [Section 5.6](#56-building-the-genio-samples))
@@ -909,8 +940,8 @@ and run it in the `-zephyr-smp` cell:
 
 ```bash
 jailhouse cell create /usr/share/jailhouse/cells/$(uname -n)-zephyr-smp.cell
-jailhouse cell load zephyr /root/zephyr.bin -a 0x8000
-jailhouse cell start zephyr
+jailhouse cell load zephyr-smp /root/zephyr.bin -a 0x8000
+jailhouse cell start zephyr-smp
 ```
 
 Jailhouse starts CPU 2; Zephyr then starts CPU 3 itself with PSCI `CPU_ON`.
@@ -929,7 +960,7 @@ thread_b: Hello World from cpu 1 on mt8370_genio_510_evk!
 > `-zephyr-a78` cell it stops before its console starts and prints nothing.
 > In a one-core cell such as `-zephyr` it panics after
 > `Failed to boot secondary CPU core 1 (MPID:0x200)`. See
-> [Section 8](#8-troubleshooting).
+> [Section 9](#9-troubleshooting).
 
 ### 6.6 Running Zephyr on a Cortex-A78
 
@@ -950,7 +981,7 @@ cell (CPU 5 on the Genio 510 EVK, CPU 7 on the Genio 700 EVK).
 | `running` | The cell's CPUs execute the cell. |
 | `running/locked` | Running, and the cell has locked the configuration: no cells can be created or destroyed until it unlocks it. |
 | `shut down` | The cell exists but does not run, for example after `cell shutdown` or before `cell start`. |
-| `failed` | A CPU of the cell was stopped because of an error, for example an access to memory or a device that the cell does not own. The CPU is listed under `Failed CPUs`. |
+| `failed` | The hypervisor stopped the cell: after an access to memory or a device that the cell does not own, a watchdog expiry, a reset request of the cell (`SWRST`, PSCI `SYSTEM_RESET` or `SYSTEM_RESET2`), or a message that the cell did not answer (see [Chapter 8](#8-a-watchdog-for-the-cells)). The stopped CPUs are listed under `Failed CPUs`. |
 
 **Hypervisor console.** The hypervisor reports cell changes and errors in its
 console buffer:
@@ -989,10 +1020,10 @@ the board knows, for example `TERM=xterm jailhouse cell stats zephyr`. Press
 
 | Command (on the board) | Effect |
 |---|---|
-| `jailhouse cell shutdown zephyr` | Stops the cell. Its CPUs, memory and devices stay assigned to it. |
-| `jailhouse cell load zephyr <image> -a 0x8000` | Loads a (new) image into the stopped cell. |
-| `jailhouse cell start zephyr` | Starts the cell again. |
-| `jailhouse cell destroy zephyr` | Stops the cell and returns its CPUs, memory and devices to Linux. |
+| `jailhouse cell shutdown <name>` | Stops the cell. Its CPUs, memory and devices stay assigned to it. |
+| `jailhouse cell load <name> <image> -a 0x8000` | Loads a (new) image into the stopped cell. |
+| `jailhouse cell start <name>` | Starts the cell again. |
+| `jailhouse cell destroy <name>` | Stops the cell and returns its CPUs, memory and devices to Linux. |
 
 For a quick edit-build-run cycle, rebuild on the host, push the image, and
 reload it into the same cell:
@@ -1004,6 +1035,9 @@ west build -d build/hello_world
 adb push build/hello_world/zephyr/zephyr.bin /root/zephyr.bin
 adb shell 'jailhouse cell shutdown zephyr && jailhouse cell load zephyr /root/zephyr.bin -a 0x8000 && jailhouse cell start zephyr'
 ```
+
+The cell then runs the new image. (Before MediaTek Jailhouse v26.1, the Genio
+700 EVK could run the previous image from its CPU's instruction cache.)
 
 ### 6.9 Disabling Jailhouse
 
@@ -1036,9 +1070,10 @@ connection independently of Zephyr.
    picocom -b 38400 /dev/ttyUSB0
    ```
 
-2. If Zephyr has used UART1 since the board booted, reset the UART's
-   MediaTek-specific `HIGHSPEED` register first. Zephyr sets it for its baud
-   rate, and `uart-demo` does not reset it:
+2. If a Zephyr cell has run since the board booted, reset UART1's
+   MediaTek-specific high-speed register (`HIGHS`) to 0, with no cell running
+   on UART1. Zephyr leaves it set, and `uart-demo` programs its own clock and
+   baud rate, but not this register. After a fresh boot, skip this step:
 
    **Board**
 
@@ -1046,7 +1081,7 @@ connection independently of Zephyr.
    devmem2 0x11001224 w 0
    ```
 
-3. Run the demo (Jailhouse must be enabled, and no `zephyr` cell may exist):
+3. Run the demo (Jailhouse must be enabled, and no Zephyr cell may exist):
 
    **Board**
 
@@ -1057,6 +1092,11 @@ connection independently of Zephyr.
    ```
 
    The console shows `Hello 1 from cell!`, `Hello 2 from cell!`, and so on.
+   If it shows unreadable characters, the reset of step 2 did not take: it
+   works only while UART1's clock is on, which a Zephyr run leaves on and
+   Linux switches off again when it uses `ttyS1`. Destroy the demo cell, run
+   a Zephyr cell once and destroy it, and repeat steps 2 and 3; if `ttyS1` was
+   opened, reboot the board first.
 
 4. Destroy the demo cell:
 
@@ -1084,6 +1124,8 @@ expected output.
 | `uart/reconfigure` | `uart_configure()` changes the baud rate on the wire | Host script |
 | `gpio/loopback` | GPIO output and input, and all EINT trigger modes | One wire |
 | `audio/...` | Audio front end: playback, capture and eTDM loopbacks | AFE cell, wires (loopbacks) |
+| `watchdog/expiry` | The cell's watchdog ends the cell when it is no longer fed | `-S mtk-wdt` (see [Chapter 8](#8-a-watchdog-for-the-cells)) |
+| `rpmsg` | RPMsg messages between Linux and Zephyr | The `-zephyr-rpmsg` cell (see [Section 7.4](#74-rpmsg-with-linux)) |
 
 ### 7.1 Samples with a host script
 
@@ -1144,7 +1186,19 @@ missing: the driver still reports success, but no audio moves.
    126, pin 6 to 127, and pin 11 to 128.
 
 Do not use the eTDM ports from Linux while an AFE cell runs: the AFE cells
-share the audio front end with Linux.
+share the audio front end with Linux. While an AFE cell exists, Linux cannot
+reset the audio subsystem: the hypervisor keeps the cell's value of the audio
+reset. The cell itself may reset only the audio subsystem; a write to
+another reset is ignored, and the hypervisor console reports it once
+(`WDT: cell "<name>" may not reset subsystems <bits>, ignored`).
+
+The audio samples map the DMA buffers non-cacheable. That keeps them simple,
+but it makes their per-period handler about 20 times slower on a Cortex-A55,
+and about 6 times slower on a Cortex-A78, than cacheable buffers with an
+explicit clean of each playback period and invalidate of each capture
+period. Measured on the Genio 510 EVK at 2.0 GHz, the longest handler per
+5 ms tick took 1000 µs against 52 µs on an A55, and 96 µs against 17 µs on
+an A78. A production driver should map the buffers cacheable.
 
 ### 7.4 RPMsg with Linux
 
@@ -1152,7 +1206,7 @@ The `-zephyr-rpmsg` cells connect Zephyr and Linux through shared memory, for
 RPMsg messages. The root cell has a virtual PCI device, an ivshmem device,
 whose 1 MiB of shared memory at `0x6ba00000` both cells map; each side
 signals the other through the device's interrupt (see
-[Section 9.3](#93-resources-of-the-zephyr-cells)). On Linux, the
+[Section 10.3](#103-resources-of-the-zephyr-cells)). On Linux, the
 `mtk-jh-rproc` driver binds to the device as a remote processor. It handles
 only the messages: Jailhouse, not the driver, loads and starts Zephyr.
 
@@ -1165,9 +1219,10 @@ It has two parts:
 - a Linux tool, `samples/rpmsg/linux`: `rpmsg-test` attaches Linux to the remote
   processor and exchanges messages with Zephyr through `/dev/rpmsg<m>`.
 
-Linux needs nothing beyond the image of [Section 3](#3-building-the-linux-image-with-jailhouse): with `jailhouse` in
-`IMAGE_INSTALL`, the layer builds the `mtk-jh-rproc` driver and the RPMsg
-character device into the kernel.
+Linux needs nothing beyond the image of [Section 3](#3-building-the-linux-image-with-jailhouse): with the `jailhouse`
+feature, the image has the `mtk-jh-rproc` driver and the RPMsg character
+devices, as modules that load by themselves: the driver when Jailhouse is
+enabled, the character devices when the RPMsg channel comes up.
 
 1. **Build the Zephyr application** in the Zephyr workspace (see
    [Section 5.6](#56-building-the-genio-samples)):
@@ -1222,9 +1277,11 @@ character device into the kernel.
    detached
    ```
 
-   `n` is `0` on the Genio 510 EVK and `1` on the Genio 700 EVK, where
-   `remoteproc0` is the system companion processor (`scp`). Run the
-   following steps in the same shell, or set `n` again.
+   The number `n` depends on the other remote processors of the image, for
+   example the system companion processor (`scp`), and on their order at
+   boot; it can differ between boards and between image versions. Always
+   find it by the name `0001:00:00.0`, as above, and run the following steps
+   in the same shell, or set `n` again.
 
 5. **Start Zephyr in the `-zephyr-rpmsg` cell:**
 
@@ -1232,8 +1289,8 @@ character device into the kernel.
 
    ```bash
    jailhouse cell create /usr/share/jailhouse/cells/$(uname -n)-zephyr-rpmsg.cell
-   jailhouse cell load zephyr /root/rpmsg-zephyr.bin -a 0x8000
-   jailhouse cell start zephyr
+   jailhouse cell load zephyr-rpmsg /root/rpmsg-zephyr.bin -a 0x8000
+   jailhouse cell start zephyr-rpmsg
    ```
 
    The hypervisor console shows `Shared memory connection established, peer
@@ -1303,10 +1360,12 @@ character device into the kernel.
    **Board**
 
    ```bash
-   jailhouse cell destroy zephyr
+   jailhouse cell destroy zephyr-rpmsg
    ```
 
-   The ivshmem device stays in Linux until `jailhouse disable`.
+   The ivshmem device stays in Linux until `jailhouse disable`. The cell
+   restart daemon detaches Linux by itself before it restarts the cell (see
+   [Section 8.4](#84-restarting-failed-cells)).
 
 > **Caution:** Detach before you destroy the cell, and run `rpmsg-test` once
 > per attach. The driver does not support `stop` (`Invalid argument`). If
@@ -1318,23 +1377,289 @@ character device into the kernel.
 
 ---
 
-## 8. Troubleshooting
+## 8. A watchdog for the cells
+
+Each Zephyr cell has a watchdog of its own, and Linux can restart a cell that
+fails. This chapter explains how the watchdogs work, how to build Zephyr
+images that use them, and how to restart failed cells automatically.
+
+### 8.1 How the watchdogs work
+
+- **Linux keeps the hardware watchdog.** The MT8188 has one watchdog, in the
+  top reset generation unit (TOPRGU) at `0x10007000`. It stays with Linux: on
+  the IoT Yocto image, systemd feeds it, with a timeout of 31 s. If Linux
+  hangs, the hardware watchdog resets the whole SoC, cells included, as
+  without Jailhouse.
+- **Each Zephyr cell has its own.** Every Zephyr cell has a watchdog at the
+  same address, with the registers of the TOPRGU, so a Zephyr watchdog driver
+  works the same in a cell as on bare metal. Its timeout is 2 to 31 s, in
+  steps of 1/64 s.
+- **An expiry stops only its cell.** When a cell misses its deadline,
+  Jailhouse stops that cell, and only that cell. The cell's state becomes
+  `failed`, and the hypervisor console shows:
+
+  ```
+  WDT: cell "zephyr" missed its deadline, detected 23 ms late
+  Cell "zephyr" failed: watchdog timeout
+  ```
+
+  Linux and the other cells keep running. The failed cell keeps its CPUs,
+  memory and devices until it is destroyed or restarted.
+- **A reset restarts only its cell.** A cell that writes the chip reset
+  (`SWRST`), or calls PSCI `SYSTEM_RESET` or the warm `SYSTEM_RESET2`, fails
+  in the same way, with `chip reset requested` or `system reset requested`
+  as the reason; the SoC is not reset. In Zephyr, `sys_reboot()`, cold or
+  warm, therefore ends the cell, and the restart daemon starts it again (see
+  [Section 8.4](#84-restarting-failed-cells)). `PSCI_FEATURES` reports both
+  calls for a cell with a watchdog; a cell without one, such as the
+  `uart-demo` cell, gets `NOT_SUPPORTED` from both.
+- **A restarted cell learns why.** The watchdog's status register `STA`
+  reads bit 31 after an expiry, bit 30 after a reset, and 0 otherwise. The
+  value holds until the cell starts again, also when the cell was destroyed
+  and created again. In Zephyr, `hwinfo_get_reset_cause()` reports
+  `RESET_WATCHDOG`, `RESET_SOFTWARE`, or `RESET_POR` on the cell's first start.
+- **The deadlines are checked on a tick.** The Jailhouse driver gives the
+  hypervisor a tick every 100 ms, on which it checks the deadlines. An
+  expiry is therefore detected at most one tick late.
+
+### 8.2 Building Zephyr images with the watchdog
+
+The watchdog is off in Zephyr images by default. The `mtk-wdt` snippet turns
+on the watchdog node, behind the `watchdog0` alias, and its driver:
+
+**Host**
+
+```bash
+west build -p -b mt8370_genio_510_evk/mt8188/a55 -S mtk-wdt -d build/<app> <app>
+```
+
+The application uses Zephyr's watchdog API (`wdt_install_timeout()`,
+`wdt_setup()`, `wdt_feed()`) with one channel and a timeout of 2 to 31 s. An
+expiry resets the cell; the watchdog raises no interrupt before, so a
+timeout cannot have a callback: the driver accepts only `WDT_FLAG_RESET_SOC`
+without a callback and returns `-ENOTSUP` otherwise. `sys_reboot()` resets
+through PSCI, so an application that reboots needs `CONFIG_PM_CPU_OPS=y`. With `CONFIG_HWINFO=y`,
+`hwinfo_get_reset_cause()` reports why the cell restarted. Zephyr's task
+watchdog (`CONFIG_TASK_WDT`) can use the watchdog as its hardware fallback
+(`CONFIG_TASK_WDT_HW_FALLBACK`); the board files of the `task_wdt` sample
+show the settings.
+
+> **Caution:** Run images built with `mtk-wdt` only in the cells of MediaTek
+> Jailhouse v26.1. The cells of 1.0 have no watchdog of their own: the plain
+> cells stop such an image at its first watchdog access, and the AFE cells
+> give it the hardware watchdog of Linux, which the image then reprograms, so
+> that an expiry resets the whole SoC.
+
+### 8.3 Trying the watchdog
+
+**The expiry sample.** `samples/watchdog/expiry` arms a 5 s watchdog, feeds
+it ten times at 1 s intervals, then stops feeding and prints `alive` every
+250 ms until the watchdog ends the cell:
+
+**Host**
+
+```bash
+west build -p -b mt8370_genio_510_evk/mt8188/a55 -S mtk-wdt -d build/expiry samples/watchdog/expiry
+adb push build/expiry/zephyr/zephyr.bin /root/expiry.bin
+```
+
+**Board**
+
+```bash
+jailhouse cell create /usr/share/jailhouse/cells/$(uname -n)-zephyr.cell
+jailhouse cell load zephyr /root/expiry.bin -a 0x8000
+jailhouse cell start zephyr
+```
+
+UART1 shows:
+
+```
+WDTEXPIRY armed for 5000 ms, counter at 13000000 Hz
+WDTEXPIRY kick 1: 1000 ms since the arm, cycle <n>
+...
+WDTEXPIRY kick 10: 10000 ms since the arm, cycle <n>
+WDTEXPIRY stopped kicking; the watchdog is due at 15005 ms
+WDTEXPIRY alive: 10255 ms since the arm, cycle <n>
+...
+WDTEXPIRY alive: 15005 ms since the arm, cycle <n>
+```
+
+The output stops at about 15 s. Then `jailhouse console` shows the `WDT:`
+message of [Section 8.1](#81-how-the-watchdogs-work), and
+`jailhouse cell list` shows the cell `failed`. Destroy it with
+`jailhouse cell destroy zephyr`, or let the restart daemon restart it.
+
+**The task watchdog sample.** Zephyr's `samples/subsys/task_wdt` uses the
+cell's watchdog as the hardware fallback of its task watchdog. Its control
+thread gets stuck on purpose, and the task watchdog's callback then reboots,
+which ends the cell:
+
+**Host**
+
+```bash
+west build -p -b mt8370_genio_510_evk/mt8188/a55 -S mtk-wdt -d build/task_wdt zephyr/samples/subsys/task_wdt
+```
+
+UART1 shows:
+
+```
+Task watchdog sample application.
+Main thread still alive...
+Control thread started.
+Main thread still alive...
+Control thread getting stuck...
+Task watchdog channel 1 callback, thread: control
+Resetting device...
+```
+
+The hypervisor console then shows `Cell "zephyr" failed: system reset
+requested`.
+
+### 8.4 Restarting failed cells
+
+The restart daemon, `jailhouse-cell-restartd`, restarts the cells that fail:
+after a watchdog expiry, a reset request, a fault, or a message that the cell
+did not answer. The image installs it in `/usr/libexec/jailhouse/` with the
+systemd unit `jailhouse-cell-restartd.service`, and enables the unit. The
+unit starts only when its configuration file exists, so writing that file is
+the one step needed.
+
+1. Create `/etc/jailhouse/cell-restart.conf`. Each section names a cell by
+   its name and gives its configuration file and its image; use your board's
+   files and the paths of your images:
+
+   ```
+   [DEFAULT]
+   restart_limit = 5
+   restart_window = 300
+
+   [zephyr]
+   config = /usr/share/jailhouse/cells/genio-510-evk-zephyr.cell
+   image = /root/zephyr.bin 0x8000
+
+   [zephyr-rpmsg]
+   config = /usr/share/jailhouse/cells/genio-510-evk-zephyr-rpmsg.cell
+   image = /root/rpmsg-zephyr.bin 0x8000
+   remoteproc = 0001:00:00.0
+   ```
+
+   | Key | Meaning |
+   |---|---|
+   | `config` | The cell's configuration file |
+   | `image` | The image and its load address; one line per image |
+   | `remoteproc` | The remote processor to detach before the cell is destroyed, until its state reads `detached`; the RPMsg cell needs it (see [Section 7.4](#74-rpmsg-with-linux)) |
+   | `before`, `after` | Shell commands to run before the restart and after the cell has started again, for example to stop and start the applications that use the cell |
+   | `restart_limit`, `restart_window` | After `restart_limit` restarts within `restart_window` seconds, the cell stays failed until it runs again |
+
+2. Start the daemon with the new configuration:
+
+   **Board**
+
+   ```bash
+   systemctl restart jailhouse-cell-restartd
+   journalctl -u jailhouse-cell-restartd
+   ```
+
+   The log starts with `restarting zephyr, zephyr-rpmsg when they fail`.
+
+For each failed cell that the file names, the daemon runs the `before`
+command, detaches the remote processor, if any, destroys the cell, creates
+it, loads its images, starts it, and runs the `after` command. The log shows
+`zephyr: restarting` and `zephyr: restarted`. Restarts back off: 0, 1, 3, 7,
+15 and at most 30 s after the failure. After too many restarts, the log
+shows `zephyr: failed 5 times within 300 s, not restarted until it runs
+again`.
+
+The daemon restarts only the cells that fail. A cell that you create,
+destroy or load by hand behaves as before; to keep a failed cell for
+inspection, stop the daemon first (`systemctl stop jailhouse-cell-restartd`).
+
+Further details:
+
+- An image line without an address loads at 0. `restart_limit` and
+  `restart_window` default to 5 and 300.
+- If the `before` command fails, the restart is not attempted, and it counts
+  as a restart.
+- A cell that the daemon gave up on is restarted again only after it has
+  been seen running, for example after you started it by hand.
+- An unreadable or invalid configuration makes the daemon exit with an
+  error, which its log shows; systemd then starts it again. Check a
+  configuration by running the daemon by hand:
+  `/usr/libexec/jailhouse/jailhouse-cell-restartd /etc/jailhouse/cell-restart.conf`.
+- `Documentation/cell-restart.md` in MediaTek Jailhouse describes the
+  daemon (see [Section 11](#11-related-documentation)).
+
+### 8.5 Operating rules
+
+- **Leave `tick_ms` at 100.** The tick period is the parameter `tick_ms` of
+  the Jailhouse driver (`/sys/module/jailhouse/parameters/tick_ms`). With
+  `tick_ms=0`, the cells' watchdogs are not checked; it is meant for tests.
+  Set to 0 while Jailhouse is enabled, the kernel log says
+  `jailhouse: tick stopped, the cells' watchdogs are not checked`; loading
+  the driver with `tick_ms=0` is silent. When the ticks stop for long, the
+  hypervisor console shows `WDT: no tick from the root cell for <n> ms, the
+  cells' watchdogs are not checked`, and later `WDT: ticks from the root cell
+  resumed`.
+- **Detection needs the Linux kernel.** The cells' deadlines are checked only
+  while the Linux kernel runs. If it hangs, the hardware watchdog resets the
+  SoC within 31 s.
+- **A new cell can take up to 5 s.** The daemon notices a cell that was
+  created while it waited at its next check, at most 5 s later. The first
+  failure of such a cell can therefore take up to 5 s to be restarted; later
+  failures are restarted at once.
+- **No pre-timeout.** A cell's watchdog resets the cell without an interrupt
+  before; Zephyr's watchdog callbacks are not supported.
+- **Both reboots restart the cell.** `sys_reboot(SYS_REBOOT_COLD)` (PSCI
+  `SYSTEM_RESET`) and `sys_reboot(SYS_REBOOT_WARM)` (PSCI `SYSTEM_RESET2`)
+  end the cell in the same way, and `hwinfo` then reports `RESET_SOFTWARE`
+  in the restarted cell. A cell without a watchdog cannot reboot itself:
+  both calls return `NOT_SUPPORTED`.
+
+### 8.6 What was verified
+
+On both EVKs, with the cells of this release:
+
+- the 52 checks of the MediaTek Jailhouse regression, which cover the earlier
+  chapters;
+- an expiry fails only its cell, detected 0 to 100 ms late, also for a cell
+  that spins with interrupts masked, on both CPUs of the SMP cell, and with
+  Linux's own watchdog feeder stopped;
+- a cell's chip reset, `SYSTEM_RESET` and `SYSTEM_RESET2` fail only that
+  cell, and `STA` and `hwinfo` report the cause after each kind of end;
+- Zephyr's watchdog tests (`wdt_basic_api`, `wdt_error_cases`) and the
+  `task_wdt` sample pass in a cell, and `hwinfo` reports the reset cause
+  after a timeout and after a reset;
+- the daemon restarts each of the seven Zephyr cells, backs off and gives up
+  as configured, runs ten expiry and restart cycles without leaking
+  hypervisor memory, and restarts the RPMsg cell, after which RPMsg works
+  again;
+- on the Genio 700 EVK, a Linux kernel crash with cells running resets the
+  SoC through the hardware watchdog within 31 s.
+
+---
+
+## 9. Troubleshooting
 
 | Symptom | Likely cause | Remedy |
 |---|---|---|
 | `bitbake` fails with a `PermissionError` when it writes `/proc/self/uid_map` | The host restricts unprivileged user namespaces (for example, AppArmor on Ubuntu 24.04), which `bitbake` needs | Build on the verified Ubuntu 22.04 host, or allow user namespaces for `bitbake` as described in the Yocto Project documentation for your host |
 | The host runs out of memory during the Yocto build | Too many parallel build tasks for the host's RAM | Reduce `BB_NUMBER_THREADS` and `PARALLEL_MAKE` (see [Section 3.3](#33-configuring-the-build)) |
 | `genio-flash` waits, or reports that board control failed | The board is not in download mode | Use the Download and RST buttons (see [Section 4.3](#43-flashing-with-the-jailhouse-overlay)) |
-| `modprobe jailhouse` fails: module not found | The image was built without Jailhouse | Add `IMAGE_INSTALL:append = " jailhouse"`, rebuild and flash (see [Section 3.3](#33-configuring-the-build)) |
+| `bitbake` stops with `Nothing RPROVIDES 'jailhouse'` and `jailhouse was skipped: missing required combined feature 'jailhouse' (not in COMBINED_FEATURES)` | `jailhouse` is requested, for example by an `IMAGE_INSTALL` line, without the `jailhouse` distribution feature | Add `DISTRO_FEATURES:append = " jailhouse"` to `local.conf` and remove the `IMAGE_INSTALL` line: the feature installs Jailhouse by itself (see [Section 3.2](#32-enabling-the-jailhouse-feature)) |
+| `bitbake` stops with `Nothing RPROVIDES 'jailhouse'` and `jailhouse was skipped: incompatible with machine <machine> (not in COMPATIBLE_MACHINE)` | `jailhouse` is requested for a machine other than `genio-510-evk` and `genio-700-evk` | Build for `genio-510-evk` or `genio-700-evk` (see [Section 3.3](#33-configuring-the-build)). On other machines, the feature line alone builds the image without Jailhouse |
+| `modprobe jailhouse` fails: module not found | The image was built without Jailhouse | Add `DISTRO_FEATURES:append = " jailhouse"`, rebuild and flash (see [Section 3.2](#32-enabling-the-jailhouse-feature)) |
 | `jailhouse enable` fails, and the kernel log shows `jailhouse: request_mem_region failed for hypervisor memory.` | The Jailhouse overlay is not loaded, so Linux uses the hypervisor memory | Check `fw_printenv list_dtbo` and `/proc/iomem` (see [Section 4.4](#44-verifying-the-image-on-the-board)); flash again with `--load-dtbo` |
 | `jailhouse enable` fails with `Invalid argument`, and `jailhouse console` shows `Cell "genio-<board>-evk" has vendor resources, but no unit handles them` | The hypervisor was built without `CONFIG_SOC=mt8188`, so it has no MediaTek units | Build Jailhouse with `CONFIG_SOC=mt8188`, as the IoT Yocto recipe does |
+| `jailhouse enable` or `jailhouse cell create` fails with `Invalid argument`, and the kernel log shows `jailhouse: Configuration revision mismatch` | The cell file is from another release: MediaTek Jailhouse v26.1 uses revision 16, 1.0 used revision 15 | Use the cells of the same release as the hypervisor, as the image installs them (see [Section 10.2](#102-cells)) |
 | `jailhouse cell create` fails with `Invalid argument` | Jailhouse is not enabled (for example, after a reboot) | Enable Jailhouse (see [Section 6.2](#62-enabling-jailhouse)) |
-| `jailhouse cell create` fails with `File exists` | A cell with the same name exists; all Zephyr cells are named `zephyr` | Destroy the existing cell first (`jailhouse cell destroy zephyr`) |
+| `jailhouse cell create` fails with `File exists` | A cell of the same name exists, for example from an earlier run | Destroy the existing cell first (`jailhouse cell destroy <name>`; `jailhouse cell list` shows the names) |
 | `jailhouse cell create` fails with `Device or resource busy` | Another cell uses the same CPUs or pins, for example a `uart-demo` cell, which also uses CPU 3 and UART1 | Destroy the other cell first |
-| The cell state is `failed` | The cell accessed memory or a device that it does not own, or the image does not fit into its memory | Read `jailhouse console`: an `Unhandled data read`/`write` message names the address. Check that the image was built for the right board target, uses only the granted devices, and fits into 8 MiB (`system/memory_window`); use an AFE cell for audio images |
+| The cell state is `failed` | The cell accessed memory or a device that it does not own, or the image does not fit into its memory; or its watchdog expired, or it asked for a reset | Read `jailhouse console`: an `Unhandled data read`/`write` message names the address, and a `WDT:` message names a watchdog expiry (see [Chapter 8](#8-a-watchdog-for-the-cells)). Check that the image was built for the right board target, uses only the granted devices, and fits into 8 MiB (`system/memory_window`); use an AFE cell for audio images |
 | No output on UART1, cell `running` | Wrong serial device or baud rate; another program reads the port; the image was loaded without `-a 0x8000`; the image was built for another board; an SMP image runs in a cell on other CPUs, such as `-zephyr-a78` | Check the device and 115200 baud; run `fuser /dev/ttyUSB<n>` on the host; reload with `-a 0x8000`; rebuild for the right board target; run SMP images only in the `-smp` cells (see [Section 6.5](#65-running-zephyr-on-two-cores-smp)) |
 | UART1 shows `Failed to boot secondary CPU core 1 (MPID:0x200)` and a kernel panic; the cell stays `running` | An SMP image runs in a one-core cell, such as `-zephyr`: the hypervisor refuses to start CPU 2, which the cell does not own | Use the `-zephyr-smp` or `-zephyr-afe-smp` cell, or build the image for the single-core target (see [Section 6.5](#65-running-zephyr-on-two-cores-smp)) |
-| `uart-demo` prints unreadable characters | UART1 is still in the high-speed mode that Zephyr set, or the terminal is not at 38400 baud | Run `devmem2 0x11001224 w 0` on the board; set the terminal to 38400 baud (see [Section 6.10](#610-optional-checking-a-cell-with-the-uart-demo-inmate)) |
+| A Zephyr image built from an older Genio Zephyr tree receives nothing on UART1 | `/dev/ttyS1` was opened on Linux, which left UART1 with DMA set until the next boot | Reboot the board, and do not open `ttyS1`; or use an image built from the tree of this guide, which resets UART1 (see [Section 6.1](#61-opening-the-zephyr-console-uart1)) |
+| The hypervisor console shows `WDT: no tick from the root cell for <n> ms` | The Jailhouse driver's tick stopped, for example with `tick_ms=0`; the cells' watchdogs are not checked meanwhile | Set `tick_ms` back to 100 (see [Section 8.5](#85-operating-rules)); `WDT: ticks from the root cell resumed` follows |
+| `uart-demo` prints unreadable characters or nothing | A Zephyr cell ran before and left UART1's high-speed register set, and its reset was skipped or did not take: the reset works only while UART1's clock is on, after a Zephyr run and before Linux uses `ttyS1`; or the terminal is not at 38400 baud | Run a Zephyr cell once, then `devmem2 0x11001224 w 0` with no cell running on UART1; set the terminal to 38400 baud; if `ttyS1` was opened, reboot first (see [Section 6.10](#610-optional-checking-a-cell-with-the-uart-demo-inmate)) |
 | After a new `-zephyr-rpmsg` cell, Zephyr stays at `Awaiting VIRTIO config ready`, and Linux logs `msg received with no recipient` | The previous cell was destroyed while Linux was attached, so the remote processor is still `attached` | Write `detach` to `/sys/class/remoteproc/remoteproc<n>/state` until it reads `detached`, then run `rpmsg-test` again (see [Section 7.4](#74-rpmsg-with-linux)) |
 | `jailhouse cell stats` fails with `setupterm: could not find terminal` | The command was started without a terminal, or with a terminal type unknown to the board | Use `adb shell -t` or an interactive `adb shell`, and set `TERM=xterm` if needed |
 | Audio samples run but capture silence or report a DMA position outside the buffer | The audio power domain is off, the cell is not an AFE cell, the image was built without `mtk-afe`, or wires are missing | Work through [Section 7.3](#73-audio-samples) |
@@ -1344,9 +1669,9 @@ character device into the kernel.
 
 ---
 
-## 9. Reference
+## 10. Reference
 
-### 9.1 Memory map
+### 10.1 Memory map
 
 The Jailhouse overlay removes four areas from the memory that Linux may use:
 
@@ -1360,7 +1685,7 @@ The Jailhouse overlay removes four areas from the memory that Linux may use:
 The AFE cells also share the audio DMA memory at `0x61000000` (8 MiB) with
 Linux.
 
-### 9.2 Cells
+### 10.2 Cells
 
 The `jailhouse` package installs these cell configurations in
 `/usr/share/jailhouse/cells/` (`<board>` is `510` or `700`):
@@ -1369,37 +1694,46 @@ The `jailhouse` package installs these cell configurations in
 |---|---|---|
 | `genio-<board>-evk.cell` | `genio-<board>-evk` | Root cell (system configuration): Linux, all CPUs, and a virtual PCI host with one ivshmem device. Used by `jailhouse enable`. |
 | `genio-<board>-evk-zephyr.cell` | `zephyr` | Zephyr on CPU 3 |
-| `genio-<board>-evk-zephyr-a78.cell` | `zephyr` | Zephyr on a Cortex-A78 (CPU 5 / CPU 7) |
-| `genio-<board>-evk-zephyr-smp.cell` | `zephyr` | Zephyr on CPU 2 and 3 |
-| `genio-<board>-evk-zephyr-afe.cell` | `zephyr` | As `-zephyr`, plus the audio front end |
-| `genio-<board>-evk-zephyr-afe-a78.cell` | `zephyr` | As `-zephyr-a78`, plus the audio front end |
-| `genio-<board>-evk-zephyr-afe-smp.cell` | `zephyr` | As `-zephyr-smp`, plus the audio front end |
-| `genio-<board>-evk-zephyr-rpmsg.cell` | `zephyr` | As `-zephyr`, plus the ivshmem device shared with Linux, for RPMsg |
+| `genio-<board>-evk-zephyr-a78.cell` | `zephyr-a78` | Zephyr on a Cortex-A78 (CPU 5 / CPU 7) |
+| `genio-<board>-evk-zephyr-smp.cell` | `zephyr-smp` | Zephyr on CPU 2 and 3 |
+| `genio-<board>-evk-zephyr-afe.cell` | `zephyr-afe` | As `-zephyr`, plus the audio front end |
+| `genio-<board>-evk-zephyr-afe-a78.cell` | `zephyr-afe-a78` | As `-zephyr-a78`, plus the audio front end |
+| `genio-<board>-evk-zephyr-afe-smp.cell` | `zephyr-afe-smp` | As `-zephyr-smp`, plus the audio front end |
+| `genio-<board>-evk-zephyr-rpmsg.cell` | `zephyr-rpmsg` | As `-zephyr`, plus the ivshmem device shared with Linux, for RPMsg |
 | `genio-<board>-evk-uart-demo.cell` | `uart-demo` | The `uart-demo` inmate on CPU 3 |
 
-The image contains only the cells of the board it was built for. The
-hypervisor, the driver, the tool and the cells of a release belong together:
-the cell configuration format of MediaTek Jailhouse 1.0 is revision 15, and
-cells built from upstream Jailhouse or from other trees do not load.
+Each cell is named after its file without the board prefix. The image
+contains only the cells of the board it was built for. The hypervisor, the
+driver, the tool and the cells of a release belong together: the cell
+configuration format of MediaTek Jailhouse v26.1 is revision 16, and cells
+of 1.0 (revision 15), of upstream Jailhouse or of other trees do not load.
 
-### 9.3 Resources of the Zephyr cells
+In 1.0, every Zephyr cell was named `zephyr`. A script that names a cell
+should read the name from the cell file: 32 bytes at offset 8, padded with
+NUL bytes, for example
+`dd if=<file> bs=1 skip=8 count=32 2>/dev/null | tr -d '\0'`. The samples'
+`tools/genio-inmate.sh` does this.
+
+### 10.3 Resources of the Zephyr cells
 
 All Zephyr cells grant:
 
 | Resource | Details |
 |---|---|
-| CPUs | See [Section 9.2](#92-cells) |
+| CPUs | See [Section 10.2](#102-cells) |
 | Memory | 8 MiB at physical address `0x6b000000`, mapped at `0x8000`; the image is loaded and started at `0x8000` |
 | UART1 | Registers at `0x11001200`, interrupt SPI 142, clock gate 23 of `infracfg_ao`, and its pins GPIO 33 and 34 |
 | GPIO | GPIO 38 and GPIO 40 (header pins 22 and 18), with their external interrupts EINT 38 and EINT 40 |
+| Watchdog | A watchdog of the cell's own at `0x10007000`, with the registers of the TOPRGU (see [Chapter 8](#8-a-watchdog-for-the-cells)) |
 
 The AFE cells additionally grant:
 
 | Resource | Details |
 |---|---|
-| Audio front end | Registers at `0x10b10000` (64 KiB), and the audio clock and reset controls, shared with Linux |
+| Audio front end | Registers at `0x10b10000` (64 KiB), and the audio clocks, shared with Linux |
+| Audio reset | The audio subsystem reset (`AUDIO_SW_RST`) through the watchdog's reset register; writes to the other resets are ignored |
 | Audio DMA memory | 8 MiB at `0x61000000`, shared with Linux |
-| Secure monitor call | `MTK_SIP_AUDIO_CONTROL` |
+| Secure monitor call | `MT8188_SIP_AUDIO_CONTROL` |
 | eTDM pins | GPIO 4-6, 11, 107-110, 114-117 and 125-128 |
 
 The `-zephyr-rpmsg` cells additionally grant:
@@ -1420,15 +1754,18 @@ To adapt a cell, for example to give Zephyr other pins, edit its block in
 the table of your board in MediaTek Jailhouse,
 `configs/arm64/genio-<board>-evk-cells.c`, and rebuild Jailhouse; in IoT
 Yocto, add the change as a patch to the `jailhouse` recipe, for example in a
-`.bbappend`. The cell keeps its file name. The comments at the top of the
-table and of `configs/arm64/genio-evk.h` describe the lists. The build
-checks the CPUs, pins and interrupts; `jailhouse-config-check` checks the
-cells against each other and against the root cell (see the repository's
-`CONTRIBUTING.md`). The CPUs of the `-smp` cells must be the cores that the
+`.bbappend`. The cell keeps its file name and its name. The comments at the
+top of the table and of `configs/arm64/genio-evk.h` describe the lists. A
+cell gets its watchdog with a `WDT()` entry, and the audio reset with
+`WDT(MT8188_TOPRGU_AUDIO_SW_RST)`. Entries for EINTs, GPIO pins and clock
+gates must start at a multiple of 32; otherwise the hypervisor refuses the
+cell and names the entry. The build checks the CPUs, pins and interrupts;
+`jailhouse config check` checks the cells against each other and against the
+root cell (see the repository's `CONTRIBUTING.md`). The CPUs of the `-smp` cells must be the cores that the
 Zephyr SMP board variants enable, in `boards/mediatek/common/genio-evk-smp.dtsi`
 of the Genio Zephyr tree.
 
-### 9.4 CPU and MPIDR map
+### 10.4 CPU and MPIDR map
 
 Multi-core Zephyr images address CPUs by their MPIDR value.
 
@@ -1446,7 +1783,7 @@ Multi-core Zephyr images address CPUs by their MPIDR value.
 Under Jailhouse, PSCI calls from a cell must use the `smc` conduit. A cell can
 start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 
-### 9.5 On-board files
+### 10.5 On-board files
 
 | Path | Content |
 |---|---|
@@ -1455,26 +1792,28 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 | `/lib/modules/<kernel>/updates/driver/jailhouse.ko` | Jailhouse driver |
 | `/usr/share/jailhouse/cells/` | Cell configurations |
 | `/usr/share/jailhouse/inmates/` | Demo inmates (`uart-demo.bin`, `gic-demo.bin`, `ivshmem-demo.bin`) |
-| `/usr/libexec/jailhouse/` | Helper tools of the `jailhouse` command, for example `jailhouse-cell-stats` |
+| `/usr/libexec/jailhouse/` | Helper tools of the `jailhouse` command, for example `jailhouse-cell-stats`, and the cell restart daemon `jailhouse-cell-restartd` |
+| `/etc/jailhouse/cell-restart.conf` | The cells that the restart daemon restarts; you create it (see [Section 8.4](#84-restarting-failed-cells)) |
 | `/sys/devices/jailhouse/` | Hypervisor and cell state, and statistics |
+| `/sys/module/jailhouse/parameters/tick_ms` | The period of the watchdog tick, in ms (see [Section 8.5](#85-operating-rules)) |
 
-### 9.6 Command summary
+### 10.6 Command summary
 
 | Command (on the board) | Purpose |
 |---|---|
 | `modprobe jailhouse` | Load the Jailhouse driver |
 | `jailhouse enable /usr/share/jailhouse/cells/$(uname -n).cell` | Start the hypervisor; Linux becomes the root cell |
 | `jailhouse cell create <cell file>` | Create a cell and move its resources from Linux to the cell |
-| `jailhouse cell load zephyr <image> -a 0x8000` | Load a Zephyr image |
-| `jailhouse cell start zephyr` | Start the cell |
+| `jailhouse cell load <name> <image> -a 0x8000` | Load a Zephyr image |
+| `jailhouse cell start <name>` | Start the cell |
 | `jailhouse cell list` | List the cells and their state |
-| `jailhouse cell stats zephyr` | Show VM exit statistics (needs a terminal) |
+| `jailhouse cell stats <name>` | Show VM exit statistics (needs a terminal) |
 | `jailhouse console [-f]` | Show (and follow) the hypervisor console |
-| `jailhouse cell shutdown zephyr` | Stop the cell, keep its resources |
-| `jailhouse cell destroy zephyr` | Remove the cell and return its resources to Linux |
+| `jailhouse cell shutdown <name>` | Stop the cell, keep its resources |
+| `jailhouse cell destroy <name>` | Remove the cell and return its resources to Linux |
 | `jailhouse disable` | Destroy all cells and stop the hypervisor |
 
-### 9.7 Known limitations
+### 10.7 Known limitations
 
 - Jailhouse and its cells do not persist across a reboot. Enable Jailhouse
   and start the cell again after each boot.
@@ -1489,6 +1828,8 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
   that Linux selects for the cluster of its CPUs (see
   [Section 6.4](#64-choosing-a-cell)).
 - Multi-core cells start their CPUs only through PSCI over `smc`.
+- More cores in a cell do not speed up interrupt handling: one core runs a
+  handler. They help only work that runs in parallel.
 - Linux can change the pin configuration (pull, drive strength, input
   enable) of the cells' pins; Jailhouse does not mediate these registers.
 - Linux cannot use the hardware debounce or the event registers of its
@@ -1498,17 +1839,26 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
   with Linux.
 - The AFE cells do not get the audio front end's interrupt; the Zephyr audio
   driver polls.
-- The AFE cells can write the whole reset block (`toprgu`), so that Zephyr
-  can reset the audio subsystem. Such a cell can also reset other subsystems
-  and reach the watchdog; trust AFE cells accordingly.
 - Linux does not notice when a `-zephyr-rpmsg` cell is destroyed: detach
-  Linux first (see [Section 7.4](#74-rpmsg-with-linux)).
+  Linux first (see [Section 7.4](#74-rpmsg-with-linux)). The cell restart
+  daemon does this itself.
+- The cells' watchdogs are checked on the Jailhouse driver's tick, so their
+  expiry is detected only while the Linux kernel runs, and at most one tick
+  (100 ms) late. If the Linux kernel hangs, the hardware watchdog resets the
+  SoC within 31 s (see [Section 8.5](#85-operating-rules)).
+- A cell's watchdog raises no interrupt before it expires. A cell without a
+  watchdog cannot reboot itself: PSCI `SYSTEM_RESET` and `SYSTEM_RESET2`
+  return `NOT_SUPPORTED` (see [Section 8.1](#81-how-the-watchdogs-work)).
+- Opening Linux's `/dev/ttyS1` disturbs UART1 until the next boot (see
+  [Section 6.1](#61-opening-the-zephyr-console-uart1)), and after a Zephyr
+  cell has run, `uart-demo` needs UART1's high-speed register reset (see
+  [Section 6.10](#610-optional-checking-a-cell-with-the-uart-demo-inmate)).
 - The MediaTek Jailhouse release notes list all limitations of the release
-  (see [Section 10](#10-related-documentation)).
+  (see [Section 11](#11-related-documentation)).
 
 ---
 
-## 10. Related documentation
+## 11. Related documentation
 
 | Document | Address |
 |---|---|
@@ -1522,7 +1872,9 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 | Genio Zephyr samples, with the hardware setup in `doc/hardware.md` and the audio prerequisites in `audio/README.md` | <https://github.com/mtk-zephyr/samples> |
 | Genio Zephyr tree | <https://github.com/mtk-zephyr/mtk-zephyr> |
 | MediaTek Jailhouse | <https://github.com/mtk-jailhouse/jailhouse> |
-| MediaTek Jailhouse `mtk-v1.0` release notes | <https://github.com/mtk-jailhouse/jailhouse/blob/mtk-v1.0/Documentation/mtk-v1.0-release-notes.md> |
+| MediaTek Jailhouse `v26.1` release notes | <https://github.com/mtk-jailhouse/jailhouse/blob/scarthgap/Documentation/v26.1-release-notes.md> |
+| Restarting failed cells (`cell-restart.md`) | <https://github.com/mtk-jailhouse/jailhouse/blob/scarthgap/Documentation/cell-restart.md> |
+| The cell configuration format (`configuration-format.md`) | <https://github.com/mtk-jailhouse/jailhouse/blob/scarthgap/Documentation/configuration-format.md> |
 | Jailhouse project | <https://github.com/siemens/jailhouse> |
 
 [iot-get-started]: https://genio.mediatek.com/doc/iot-yocto/latest/sw/yocto/get-started.html
@@ -1541,5 +1893,6 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 | Revision | Date | Changes |
 |---|---|---|
 | 0.9 | 2026-10-04 | Initial draft for review |
-| 0.9.1 | 2026-10-08 | UART0 named by its board label only. Linux sets the clocks of both CPU clusters; use the `performance` governor for measurements (Sections 6.4, 6.6, 9.7). How an SMP image fails in a cell other than an SMP cell (Section 6.5). Two new troubleshooting entries. The hypervisor of mtk-v1.0: its start-up messages (Section 6.2), and pin configuration registers that stay with Linux (Sections 9.3, 9.7). |
-| 1.0 | 2026-10-08 | First release, for MediaTek Jailhouse `mtk-v1.0.0` and Genio Zephyr `mtk-genio-v1.0.0`. RPMsg with Linux (Section 7.4). The layer's `jailhouse` recipe builds the release branch `mtk-v1.0` and installs the cells of one board (Sections 2.2, 3.3, 4.4, 9.2). The Zephyr workspace is created at the release tag (Section 5.2). Known limitations in step with the release notes (Section 9.7). Two new troubleshooting entries. |
+| 0.9.1 | 2026-10-08 | UART0 named by its board label only. Linux sets the clocks of both CPU clusters; use the `performance` governor for measurements (Sections 6.4, 6.6, 9.7). How an SMP image fails in a cell other than an SMP cell (Section 6.5). Two new troubleshooting entries. The hypervisor of mtk-v1.0: its start-up messages (Section 6.2), and pin configuration registers that stay with Linux (Sections 9.3, 9.7). Section numbers as in revision 0.9.1. |
+| 1.0 | 2026-10-08 | First release, for MediaTek Jailhouse `mtk-v1.0.0` and Genio Zephyr `mtk-genio-v1.0.0`. RPMsg with Linux (Section 7.4). The layer's `jailhouse` recipe builds the release branch `mtk-v1.0` and installs the cells of one board (Sections 2.2, 3.3, 4.4, 9.2). The Zephyr workspace is created at the release tag (Section 5.2). Known limitations in step with the release notes (Section 9.7). Two new troubleshooting entries. Section numbers as in revision 1.0. |
+| 26.1 | 2026-10-26 | Release for MediaTek Jailhouse `v26.1` (developed as 1.1, which has no release of its own) with IoT Yocto v26.1, and the Genio Zephyr tree and samples at the commits named by the v26.1 release notes (Sections 2.2, 5.2). Jailhouse is built with the `jailhouse` feature of IoT Yocto v26.1 and its overlay `jailhouse.dtbo` (Chapters 3, 4 and 9). The version that the driver and the hypervisor report (Section 4.4). A watchdog for each Zephyr cell, and the cell restart daemon (Chapter 8; the former Chapters 8-10 are now 9-11). Each cell is named after its file (Sections 6.3-6.5, 7.4, 10.2, 10.6). Configuration format revision 16; the AFE cells no longer map the reset block (Sections 10.2, 10.3). The UART1 rules (Sections 6.1, 6.10). Limitations in step with the release notes (Section 10.7). The clock of a cell that takes both Cortex-A78 cores (Section 6.4), cacheable audio buffers (Section 7.3), and what more cores in a cell do and do not speed up (Section 10.7). |

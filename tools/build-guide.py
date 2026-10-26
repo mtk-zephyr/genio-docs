@@ -31,7 +31,7 @@ OUT = Path(sys.argv[2]) if len(sys.argv) > 2 else ROOT / "build" / "genio-jailho
 
 def figure_workflow():
 	steps = [
-		("Build Linux", ["IoT Yocto with", "meta-mediatek-experimental"], "Chapter 3"),
+		("Build Linux", ["IoT Yocto with", "the jailhouse feature"], "Chapter 3"),
 		("Flash the board", ["genio-flash with the", "Jailhouse overlay"], "Chapter 4"),
 		("Build Zephyr", ["west workspace and", "the Genio samples"], "Chapter 5"),
 		("Run under Jailhouse", ["enable, create a cell,", "load and start Zephyr"], "Chapter 6"),
@@ -180,7 +180,7 @@ def main():
 		"This guide describes how to build an IoT Yocto image with the Jailhouse partitioning "
 		"hypervisor, flash it to a Genio 510 or Genio 700 EVK, build Zephyr applications, and run "
 		"Zephyr on dedicated CPU cores next to Linux: on a Cortex-A55, a Cortex-A78, two cores, or "
-		"with the audio front end.",
+		"with the audio front end, each cell with a watchdog of its own.",
 		status)
 	info = docinfo_html([
 		("Title", title), ("Document type", "User guide"), ("Status", status),
