@@ -46,7 +46,7 @@ Out of scope:
 - **Measurements that are not pass/fail gates.** These are the core-count and
   interrupt-latency matrix of release 1.1 and the dual Cortex-A78 experiment
   (board logs 143 to 150), and the eTDM loop-latency report
-  (`docs/etdm-latency/`).
+  (a report of its own).
 - **Sanity and unit tests proposed for the merge requests.** They do not
   exist yet.
 
@@ -71,10 +71,11 @@ logs". Section 7.3 lists these cases.
 
 Conventions:
 - **Boards** are called the 510 and the 700.
-- **Board logs** are cited by number: board log 187 is the file or directory
-  `jailhouse/board-logs/187-*`. A regression run writes a directory
-  `regression-<board>-<MMDD>-<HHMM>/`. Paths are relative to the engineering
-  workspace.
+- **Board logs** are cited by number: board log 187 is the record of one run,
+  numbered in the order of the runs. Where a run has several files, the
+  entry names the file, for example board log 187 (`hv-enable.log`). The
+  board logs, scripts and build records are internal to MediaTek's
+  engineering workspace.
 - **Cells** are named by their configuration file without the
   `genio-<board>-evk-` prefix: `-zephyr-afe` is `genio-700-evk-zephyr-afe.cell`
   on the 700. A cell's name is the same suffix (`zephyr-afe`); the default
@@ -125,10 +126,9 @@ Conventions:
   - `regs32`, 32-bit and 8-bit register access from Linux;
   - `gicd-spi.py`, the GIC distributor state of one interrupt;
   - the bare-metal test inmates `psci-probe`, `sgi-probe` and `wdt-probe`;
-  - test cell configurations: `jailhouse/testcells/<board>/` for the
-    regression, `testcells/fix2/` for REL-12, and the watchdog test cell
-    `wdt-b` (`testcells/m3/`). The sources of the first two sets are in
-    `testcells/src/`.
+  - test cell configurations: one set per board for the regression, two
+    cells for REL-12, and the watchdog test cell `wdt-b`. The first two sets
+    are built from sources of their own.
 
 **Preconditions common to the board tests.**
 - One board is connected over adb, and only one test run uses it at a time.
@@ -164,9 +164,9 @@ script error; the case passed on the 700 when run again on 2026-10-26 (log
 
 ### 1.5 Sources
 
-- **Scripts**, in `jailhouse/`: `regression.sh`, `scripts/`, and the test
-  inmates and tools in `tools-board/`.
-- **Board logs**, in `jailhouse/board-logs/`.
+- **Scripts**: `regression.sh`, the scripts of the other tests, and the test
+  inmates and tools, cited by file name.
+- **Board logs**, cited by number.
 - **Engineering notes.** Some entries cite these, without file names:
   - *the W1 milestone notes*: the notes on watchdog milestones 2 and 3, and on
     the Genio 700 watchdog run, all of 2026-10-12;
@@ -177,22 +177,21 @@ script error; the case passed on the 700 when run again on 2026-10-26 (log
     2026-10-26, one row per catalogue item;
   - *the coded-criteria proposal*: the proposal of 2026-10-26 for pass/fail
     criteria in the scripts that print only observations (Chapter 8).
-  The README of this catalogue gives the file names.
-- **Build records**: the IoT Yocto integration record
-  (`iot-yocto/rity-jailhouse-move/README.md`), and the record of the Zephyr
-  image set (`zephyr/build/rel-1.1/README.md`).
+  Their file names are in the internal copy of this catalogue.
+- **Build records**: the IoT Yocto integration record, and the record of the
+  Zephyr image set.
 
 ## 2. Regression
 
 ### 2.1 Overview
 
-**Script.** `jailhouse/regression.sh <510|700>` runs on the test host. It
+**Script.** `regression.sh <510|700>` runs on the test host. It
 drives the board over adb and reads UART1, and it uses the Zephyr images of
 the build root `ZB` (the rel-1.1 set here). It prints one `PASS` or `FAIL`
 line per check, then a summary: `=== 52 passed, 0 failed`. It exits non-zero
 if any check fails. A full run takes about 15 minutes.
 
-**Logs.** A run writes the directory `board-logs/regression-<board>-<MMDD>-<HHMM>/`:
+**Logs.** A run is one board log, with these files:
 - one log per Zephyr run (`<name>.log`);
 - `uart1.log`, the UART1 capture of the whole run;
 - the hypervisor console at enable (`hv-enable.log`), during the run
@@ -200,7 +199,7 @@ if any check fails. A full run takes about 15 minutes.
 - the pin state before enable (`pinconf-native.txt`, `pins-native.txt`).
 
 The summary printed by the script is kept as a separate board log, for
-example `187-regression-refine1-700.log`.
+example board log 187.
 
 **Script revision.** The script was revised on 2026-10-26, after the latest
 runs, without changing any check:
@@ -288,8 +287,7 @@ Activating hypervisor
 **Last run.** Pass on both boards, 2026-10-26, refinement-1 image (board
 logs 179 and 187).
 
-**Sources.** `regression.sh` lines 134-146;
-`regression-700-1026-1120/hv-enable.log`, `187-regression-refine1-700.log`.
+**Sources.** `regression.sh` lines 134-146; board log 187 (`hv-enable.log`).
 
 #### R-02 Root pin state unchanged by the mediation
 
@@ -310,8 +308,8 @@ PASS  root: pin state unchanged by mediation
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 136-137 and 148-151;
-`regression-700-1026-1120/pinconf-native.txt`, `pins-native.txt`.
+**Sources.** `regression.sh` lines 136-137 and 148-151; board log 187
+(`pinconf-native.txt`, `pins-native.txt`).
 
 #### R-03 Root cell's EINT interrupt enabled
 
@@ -334,8 +332,8 @@ PASS  root: EINT SPI enabled ( enabler=1 pendr=0 activer=0 irouter=0x0)
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 125 and 153-154; `gicd-spi.py`;
-`187-regression-refine1-700.log`.
+**Sources.** `regression.sh` lines 125 and 153-154; `gicd-spi.py`; board log
+187.
 
 ### 2.3 The bare-metal inmate and Zephyr in the default cell
 
@@ -372,8 +370,8 @@ Hello 4 from cell!
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 156-171;
-`regression-700-1026-1120/uart1.log` lines 1-4.
+**Sources.** `regression.sh` lines 156-171; board log 187 (`uart1.log`) lines
+1-4.
 
 #### R-05 Zephyr `hello_world`
 
@@ -401,7 +399,7 @@ Hello World! mt8390_genio_700_evk/mt8188/a55
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 173-175; `regression-700-1026-1120/hello.log`.
+**Sources.** `regression.sh` lines 173-175; board log 187 (`hello.log`).
 
 #### R-06 Ten create, start and destroy cycles
 
@@ -433,8 +431,8 @@ Hello World! mt8390_genio_700_evk/mt8188/a55
 510 and 96 on the 700, the same as after late setup in R-01 (board logs 179
 and 187).
 
-**Sources.** `regression.sh` lines 177-183; `regression-700-1026-1120/cycle.log`,
-`hv-enable.log`.
+**Sources.** `regression.sh` lines 177-183; board log 187 (`cycle.log`,
+`hv-enable.log`).
 
 #### R-07, R-08 Memory window and GPIO loopback samples
 
@@ -490,8 +488,8 @@ GPIOTEST DONE passed=25 failed=0 -> PASS
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 185-191; `regression-700-1026-1120/memory_window.log`,
-`loopback.log`.
+**Sources.** `regression.sh` lines 185-191; board log 187
+(`memory_window.log`, `loopback.log`).
 
 #### R-09 Boot and timer sample
 
@@ -500,7 +498,7 @@ GPIOTEST DONE passed=25 failed=0 -> PASS
 way to the cell, would break every timed application.
 
 **Procedure.** `run_zephyr_host` with `system/boot_and_timer` in `-zephyr`. The
-host script `tools-board/uart-stamp.py` owns the serial port for 22 s. It
+host script `uart-stamp.py` owns the serial port for 22 s. It
 time-stamps each line on arrival, and for every `SLEEP_START` and `SLEEP_END`
 pair it prints the deviation from 5 s.
 
@@ -524,8 +522,8 @@ iteration 2: +2.8 ms from 5 s
 **Last run.** Pass on both boards, 2026-10-26. Deviations: 510 −9.0, −9.0,
 +7.0 ms; 700 −13.2, −13.3, +2.8 ms (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 193-200; `tools-board/uart-stamp.py`;
-`regression-700-1026-1120/boot_and_timer.log`.
+**Sources.** `regression.sh` lines 193-200; `uart-stamp.py`; board log 187
+(`boot_and_timer.log`).
 
 #### R-10, R-11 UART receive interrupt and runtime reconfiguration
 
@@ -582,8 +580,8 @@ RESULT: runtime reconfigure works on the wire
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 202-208; `regression-700-1026-1120/rx_interrupt.log`,
-`reconfigure.log`.
+**Sources.** `regression.sh` lines 202-208; board log 187 (`rx_interrupt.log`,
+`reconfigure.log`).
 
 ### 2.4 Zephyr on a Cortex-A78
 
@@ -615,7 +613,7 @@ image runs on either core type.
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 210-212; `regression-700-1026-1120/hello-a78.log`.
+**Sources.** `regression.sh` lines 210-212; board log 187 (`hello-a78.log`).
 
 #### R-13 Five cycles on the A78, with the CPU back with Linux
 
@@ -635,7 +633,7 @@ PASS  A78: 5 create/start/destroy cycles, CPU back with Linux (online 0-7)
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 214-219; `187-regression-refine1-700.log`.
+**Sources.** `regression.sh` lines 214-219; board log 187.
 
 #### R-14, R-15 Memory window and GPIO loopback on the A78
 
@@ -662,8 +660,8 @@ MEMTEST DONE mismatches=0 -> PASS
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 221-227; `regression-700-1026-1120/memory_window-a78.log`,
-`loopback-a78.log`.
+**Sources.** `regression.sh` lines 221-227; board log 187
+(`memory_window-a78.log`, `loopback-a78.log`).
 
 #### R-16 Boot and timer on the A78
 
@@ -688,7 +686,8 @@ iteration 2: +2.5 ms from 5 s
 **Last run.** Pass on both boards, 2026-10-26. Deviations: 510 −9.0, +6.9,
 +6.9 ms; 700 +2.7, +2.6, +2.5 ms (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 229-234; `regression-700-1026-1120/boot_and_timer-a78.log`.
+**Sources.** `regression.sh` lines 229-234; board log 187
+(`boot_and_timer-a78.log`).
 
 #### R-17 UART receive interrupt on the A78
 
@@ -708,7 +707,8 @@ The log reads as in R-10, ending with `RESULT: all echo tests passed`.
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 236-239; `regression-700-1026-1120/rx_interrupt-a78.log`.
+**Sources.** `regression.sh` lines 236-239; board log 187
+(`rx_interrupt-a78.log`).
 
 ### 2.5 The SMP cell
 
@@ -737,7 +737,7 @@ Hello World! mt8390_genio_700_evk/mt8188/a55
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 241-245; `regression-700-1026-1120/hello-smp.log`.
+**Sources.** `regression.sh` lines 241-245; board log 187 (`hello-smp.log`).
 
 #### R-19 Five cycles of the SMP cell, with both CPUs back
 
@@ -756,7 +756,7 @@ PASS  SMP cell: 5 create/start/destroy cycles, CPUs back with Linux (online 0-7)
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 247-252; `187-regression-refine1-700.log`.
+**Sources.** `regression.sh` lines 247-252; board log 187.
 
 #### R-20, R-21 PSCI `CPU_ON` allowed and denied
 
@@ -767,7 +767,7 @@ the hypervisor handles.
   cell could take a core from Linux or from another cell.
 
 **Procedure.** `run_zephyr` in `-zephyr-smp`, 2 s, with a bare-metal test
-inmate, `tools-board/psci-probe.S`. Its first CPU prints `A`, calls `CPU_ON`
+inmate, `psci-probe.S`. Its first CPU prints `A`, calls `CPU_ON`
 and prints `+` and the result; the started CPU prints `B`.
 
 | Test | Inmate | Target CPU |
@@ -805,8 +805,8 @@ A+-
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 254-261; `tools-board/psci-probe.S`;
-`regression-700-1026-1120/psci-probe.log`, `uart1.log`.
+**Sources.** `regression.sh` lines 254-261; `psci-probe.S`; board log 187
+(`psci-probe.log`, `uart1.log`).
 
 #### R-22 SMP synchronisation, ten starts
 
@@ -840,7 +840,7 @@ thread_b: Hello World from cpu 1 on mt8390_genio_700_evk!
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 263-271; `regression-700-1026-1120/sync-smp-1.log`
+**Sources.** `regression.sh` lines 263-271; board log 187 (`sync-smp-1.log`)
 to `sync-smp-10.log`.
 
 #### R-23 Pending SGIs in the redistributor (`sgi-probe`)
@@ -851,7 +851,7 @@ more SGIs are pending than the GIC has list registers, so that some wait in
 the hypervisor's queue. This is the state behind R-22's start-up hang.
 
 **Procedure.** `run_zephyr` in `-zephyr`, 2 s, with the bare-metal inmate
-`tools-board/sgi-probe.S`. It prints:
+`sgi-probe.S`. It prints:
 - `S`: `ISPENDR0` after sending SGIs 3 to 8 to itself. The GIC has four list
   registers, so two stay queued.
 - `C`: `ISPENDR0` after clearing SGIs 3 and 8 through `ICPENDR0`.
@@ -877,8 +877,8 @@ S813f01f8C813f00f0P813f02f0A 00000009 00000004 00000005 00000007 00000006
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 273-278; `tools-board/sgi-probe.S`;
-`regression-700-1026-1120/sgi-probe.log`.
+**Sources.** `regression.sh` lines 273-278; `sgi-probe.S`; board log 187
+(`sgi-probe.log`).
 
 #### R-24 GPIO loopback in the SMP cell
 
@@ -898,7 +898,8 @@ The log reads as in R-08.
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 280-282; `regression-700-1026-1120/loopback-smp.log`.
+**Sources.** `regression.sh` lines 280-282; board log 187
+(`loopback-smp.log`).
 
 ### 2.6 Audio in the AFE cells
 
@@ -1018,7 +1019,7 @@ UL8 ch0: 0x00000000  UL8 ch1: 0x00000000  UL8 ch2: 0x00000000  [...]
 **Last run.** Pass on both boards, 2026-10-26. The lags are the same on both
 boards: −2, 31 and −10 frames (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 284-309; `regression-700-1026-1120/<sample>.log`.
+**Sources.** `regression.sh` lines 284-309; board log 187 (`<sample>.log`).
 
 #### R-35 to R-40 Audio in the AFE cells on the A78 and on two A55 cores
 
@@ -1065,8 +1066,8 @@ PASS  zephyr AFE-smp cell: audio/loopback_dl11_ul9 (lag -10)
 between runs: on the 510, −1, −11, −1 and −11; on the 700, −2, −11, −1 and
 −10 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 311-317; `regression-700-1026-1120/*-afe-a78.log`,
-`*-afe-smp.log`.
+**Sources.** `regression.sh` lines 311-317; board log 187 (`*-afe-a78.log`,
+`*-afe-smp.log`).
 
 ### 2.7 The root cell's access to shared registers
 
@@ -1104,7 +1105,7 @@ PASS  IOCFG (not mediated, c1-D): Linux's writes reach a Zephyr pin
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 319-333; `187-regression-refine1-700.log`.
+**Sources.** `regression.sh` lines 319-333; board log 187.
 
 #### R-42 Sub-word reads of a register without entries
 
@@ -1129,7 +1130,7 @@ PASS  sub-word reads (0 = 0)
 **Last run.** Pass on both boards, 2026-10-26: the register reads 0 both
 ways (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 335-347; `187-regression-refine1-700.log`.
+**Sources.** `regression.sh` lines 335-347; board log 187.
 
 #### R-43 Root write carrying a cell's bit (EINT `D0EN_1`, fix J4)
 
@@ -1160,7 +1161,7 @@ PASS  root: a write carrying a cell's bit applies its own bits (EINT D0EN_1) (0x
 **Last run.** Pass on both boards, 2026-10-26, with EINT 63 (board logs 179
 and 187).
 
-**Sources.** `regression.sh` lines 349-366; `187-regression-refine1-700.log`.
+**Sources.** `regression.sh` lines 349-366; board log 187.
 
 #### R-44 Root byte accesses to a mediated register (fix J5)
 
@@ -1193,11 +1194,11 @@ GPIO: root cell's 1-byte access to 0x10005000 ignored
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 368-376; `regression-700-1026-1120/hv-run.log`.
+**Sources.** `regression.sh` lines 368-376; board log 187 (`hv-run.log`).
 
 ### 2.8 Cell configuration checks and the CPUs
 
-The test cells are in `jailhouse/testcells/<board>/`: `test-mapped`,
+The regression's test cells are `test-mapped`,
 `test-ok`, `test-busy` and `test-a78`.
 
 #### R-45 Refusing a cell that maps a mediated window
@@ -1222,7 +1223,7 @@ message as the detail of the `PASS` line; no run has produced it yet.
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 378-381; `jailhouse/testcells/<board>/`.
+**Sources.** `regression.sh` lines 378-381; the test cell `test-mapped`.
 
 #### R-46 Refusing a cell that claims another cell's pin
 
@@ -1251,7 +1252,7 @@ Created cell "test-ok"
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 382-384; `regression-700-1026-1120/hv-run.log`.
+**Sources.** `regression.sh` lines 382-384; board log 187 (`hv-run.log`).
 
 #### R-47 Pin returned to Linux after destroy
 
@@ -1280,7 +1281,7 @@ Closing cell "test-busy"
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 385-388; `regression-700-1026-1120/hv-run.log`.
+**Sources.** `regression.sh` lines 385-388; board log 187 (`hv-run.log`).
 
 #### R-48 Big cores: cell cycles and Linux hotplug
 
@@ -1304,7 +1305,7 @@ PASS  big cores: cell cycles and Linux hotplug (online 0-7)
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 390-397; `187-regression-refine1-700.log`.
+**Sources.** `regression.sh` lines 390-397; board log 187.
 
 ### 2.9 End of the run: console, disable and re-enable
 
@@ -1330,7 +1331,7 @@ PASS  root (not mediated, c1-D): write to a pin configuration register not trapp
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 399-406; `regression-700-1026-1120/hv-run.log`.
+**Sources.** `regression.sh` lines 399-406; board log 187 (`hv-run.log`).
 
 #### R-50 The hypervisor console of the run
 
@@ -1364,7 +1365,7 @@ It has no other message.
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 408-411; `regression-700-1026-1120/hv-run.log`.
+**Sources.** `regression.sh` lines 408-411; board log 187 (`hv-run.log`).
 
 #### R-51 Disable and re-enable
 
@@ -1386,7 +1387,7 @@ PASS  disable and re-enable
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 413-417; `187-regression-refine1-700.log`.
+**Sources.** `regression.sh` lines 413-417; board log 187.
 
 #### R-52 The hypervisor console after the re-enable
 
@@ -1420,8 +1421,7 @@ The script ends with the summary:
 
 **Last run.** Pass on both boards, 2026-10-26 (board logs 179 and 187).
 
-**Sources.** `regression.sh` lines 419-425; `regression-700-1026-1120/hv-end.log`,
-`187-regression-refine1-700.log`.
+**Sources.** `regression.sh` lines 419-425; board log 187 (`hv-end.log`).
 
 ## 3. The watchdog set W1
 
@@ -1447,7 +1447,7 @@ in its configuration a virtual watchdog, at the address of the SoC's TOPRGU
 - **Restarts.** The daemon `jailhouse-cell-restartd` restarts failed cells,
   as `/etc/jailhouse/cell-restart.conf` says.
 
-**The script.** `jailhouse/scripts/rity-w1.sh <board> <log prefix> <stages>`
+**The script.** `rity-w1.sh <board> <log prefix> <stages>`
 runs the W1 set on an image that ships Jailhouse. It uses the image's
 hypervisor, module, cells, daemon and unit as they are. The stages are M2
 (Section 3.2), M3 (3.3), Z (3.4), TWO (3.5) and D (3.6). It brings together
@@ -1475,7 +1475,7 @@ Before the stages, the script:
    lines about the watchdog or a failure.
 
 **The probe.** Most cases run the bare-metal test inmate
-`tools-board/wdt-probe.S`. It is built in eleven variants. Every variant first
+`wdt-probe.S`. It is built in eleven variants. Every variant first
 prints its number and `s<STA>`, the cell's `STA` in hex, unless it is built
 for a cell without a watchdog (`NOSTA`).
 
@@ -1542,7 +1542,7 @@ alive, uptime 486.16 -> 526.16
 **Last run.** As the criteria on both boards, 2026-10-22 (board logs 157 and
 166).
 
-**Sources.** `scripts/rity-w1.sh`, stage M2; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M2; board log 157.
 
 #### W1-M2-T02 Kick, then stop
 
@@ -1572,8 +1572,7 @@ Cell "zephyr" failed: watchdog timeout
 **Last run.** As the criteria: failed 7.30 s (510) and 7.37 s (700) after
 the start (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M2; `tools-board/wdt-probe.S`;
-`157-w1-heads-700.log`, `157-w1-heads-700-T2-kick-stop-uart1.log`.
+**Sources.** `rity-w1.sh`, stage M2; `wdt-probe.S`; board log 157.
 
 #### W1-M2-T03 Never kick, in the SMP cell
 
@@ -1601,7 +1600,7 @@ online 0-7
 **Last run.** As the criteria: 3.29 s (510) and 3.35 s (700) (board logs 157
 and 166).
 
-**Sources.** `rity-w1.sh`, stage M2; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M2; board log 157.
 
 #### W1-M2-T04 Software reset fails only the cell
 
@@ -1633,7 +1632,7 @@ SoC uptime 570.62
 **Last run.** As the criteria: 1.33 s (510) and 1.30 s (700) (board logs 157
 and 166).
 
-**Sources.** `rity-w1.sh`, stage M2; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M2; board log 157.
 
 #### W1-M2-T05 Subsystem reset ownership
 
@@ -1664,8 +1663,7 @@ WDT: cell "zephyr" may not reset subsystems 14000, ignored
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M2; `157-w1-heads-700-T5-swsysrst-afe-uart1.log`,
-`157-w1-heads-700-T5-swsysrst-plain-uart1.log`.
+**Sources.** `rity-w1.sh`, stage M2; board log 157.
 
 #### W1-M2-T06 Ticks from Linux stopped and resumed
 
@@ -1697,7 +1695,7 @@ Cell "zephyr" failed: watchdog timeout
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M2; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M2; board log 157.
 
 #### W1-M2-T07 A reload disarms the watchdog
 
@@ -1719,7 +1717,7 @@ start rc=0
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M2; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M2; board log 157.
 
 #### W1-M2-T08, W1-M2-T09 Destroy and disable with the watchdog armed
 
@@ -1748,7 +1746,7 @@ enable rc=0
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M2; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M2; board log 157.
 
 #### W1-M2-T10 Linux's subsystem resets and a cell's reset bit
 
@@ -1778,7 +1776,7 @@ audio reset bit, which the cell owns.
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M2; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M2; board log 157.
 
 ### 3.3 Stage M3: reset causes, PSCI resets and faults
 
@@ -1833,8 +1831,7 @@ its last reboot. The cells never see it.
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M3; `157-w1-heads-700.log`,
-`157-w1-heads-700-T11-*-uart1.log`.
+**Sources.** `rity-w1.sh`, stage M3; board log 157.
 
 #### W1-M3-T12 Reset cause after a software reset
 
@@ -1858,7 +1855,7 @@ UART1: 6s40000000k00000000i00000000t40000000
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M3; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M3; board log 157.
 
 #### W1-M3-T13 PSCI `SYSTEM_RESET` fails the cell
 
@@ -1888,7 +1885,7 @@ UART1: 6s40000000k00000000i00000000t40000000
 **Last run.** As the criteria: failed 0.38 s (510) and 0.28 s (700) after the
 start (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M3; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M3; board log 157.
 
 #### W1-M3-T14 `SYSTEM_RESET` in a cell without a watchdog
 
@@ -1912,7 +1909,7 @@ UART1: 5Fffffffff
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M3; `157-w1-heads-700-T14-no-watchdog-uart1.log`.
+**Sources.** `rity-w1.sh`, stage M3; board log 157.
 
 #### W1-M3-T15 SMP cell, both CPUs busy
 
@@ -1943,7 +1940,7 @@ online 0-7
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M3; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M3; board log 157.
 
 #### W1-M3-T16 A fault inside the cell
 
@@ -1966,7 +1963,7 @@ Cell "zephyr" failed: watchdog timeout
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M3; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M3; board log 157.
 
 #### W1-M3-T17 A stage-2 fault fails the cell at once
 
@@ -1995,7 +1992,7 @@ Parking CPU 3 (Cell: "zephyr")
 **Last run.** As the criteria: `poll()` woke after 0.29 s (510) and 0.28 s
 (700) (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M3; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M3; board log 157.
 
 #### W1-M3-T18 A second shipped cell on UART1 is refused
 
@@ -2032,7 +2029,7 @@ the stage run on its own (board log 189). In the runs of 2026-10-22 (board
 logs 157 and 166), the earlier form of the case met the same `EBUSY`, but
 went on to start the cell that did not exist, and printed a traceback.
 
-**Sources.** `rity-w1.sh`, stage M3; `189-w1-m3-t18-ebusy-700.log`.
+**Sources.** `rity-w1.sh`, stage M3; board log 189.
 
 #### W1-M3-T19 The cells' watchdogs without Linux's
 
@@ -2072,7 +2069,7 @@ MODE 0x10007000: 0x5 LENGTH 0x10007004: 0xf800
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M3; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M3; board log 157.
 
 #### W1-M3-T20 Linux's watchdog across disable and enable
 
@@ -2101,12 +2098,12 @@ alive, uptime 808.09 -> 848.10
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage M3; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage M3; board log 157.
 
 ### 3.4 Stage Z: Zephyr watchdog applications
 
 Stage Z runs the Zephyr watchdog applications of the rel-1.1 set
-(`zephyr/build/rel-1.1/wdt/<board>/`) in `-zephyr`: the Genio sample
+(the set's watchdog applications for each board) in `-zephyr`: the Genio sample
 `watchdog/expiry`, Zephyr's `task_wdt` sample, and Zephyr's tests
 `hwinfo_api`, `wdt_basic_api` and `wdt_error_cases`. They check the virtual
 watchdog through the Zephyr driver that customers use. At the end, the
@@ -2146,7 +2143,7 @@ Cell "zephyr" failed: watchdog timeout
 **Last run.** As the criteria on both boards, 15.30 s (700) and 15.35 s
 (510) after the start (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage Z; `157-w1-heads-700-Z-expiry-uart1.log`.
+**Sources.** `rity-w1.sh`, stage Z; board log 157.
 
 #### W1-Z-TASKWDT Task watchdog sample and reboot through PSCI
 
@@ -2185,7 +2182,7 @@ Cell "zephyr" failed: system reset requested
 **Last run.** As the criteria: 3.83 s (700) and 3.87 s (510) (board logs 157
 and 166).
 
-**Sources.** `rity-w1.sh`, stage Z; `157-w1-heads-700-Z-task_wdt-uart1.log`.
+**Sources.** `rity-w1.sh`, stage Z; board log 157.
 
 #### W1-Z-HWINFO Reset cause through `hwinfo`
 
@@ -2212,7 +2209,7 @@ PROJECT EXECUTION SUCCESSFUL
 **Last run.** As the criteria on both boards, all three runs (board logs 157
 and 166).
 
-**Sources.** `rity-w1.sh`, stage Z; `157-w1-heads-700-Z-hwinfo-*-uart1.log`.
+**Sources.** `rity-w1.sh`, stage Z; board log 157.
 
 #### W1-Z-WDTBASIC Zephyr's basic watchdog API test
 
@@ -2259,8 +2256,7 @@ PROJECT EXECUTION SUCCESSFUL
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage Z; `157-w1-heads-700.log`,
-`157-w1-heads-700-Z-wdt_basic_api-uart1.log`, `…-second-uart1.log`.
+**Sources.** `rity-w1.sh`, stage Z; board log 157.
 
 #### W1-Z-WDTERR Zephyr's watchdog error-case test
 
@@ -2281,7 +2277,7 @@ PROJECT EXECUTION SUCCESSFUL
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage Z; `157-w1-heads-700-Z-wdt_error_cases-uart1.log`.
+**Sources.** `rity-w1.sh`, stage Z; board log 157.
 
 ### 3.5 Stage TWO: two cells with watchdogs
 
@@ -2351,9 +2347,8 @@ output, into `wdt-b`. The probe's first UART access was a stage-2 fault
 2026-10-22 (board logs 157 and 166) and the v26.0 dry run (board log 152c),
 where case 2 did not test the watchdog. Case 1 was not affected.
 
-**Sources.** `rity-w1.sh`, stage TWO, and `m3-two.sh`;
-`188-w1-two-rerun-700.log`, `188-w1-two-rerun-700-hv.log`;
-`106-w1-m3-two-510.log`; `157-w1-heads-700-hv.log`, `166-w1-heads-510-hv.log`.
+**Sources.** `rity-w1.sh`, stage TWO, and `m3-two.sh`; board log 188; board
+log 106; board log 157, board log 166.
 
 ### 3.6 Stage D: the restart daemon
 
@@ -2414,8 +2409,7 @@ Jun 26 09:02:14.743385 [...]: zephyr-rpmsg: restarted
 **Last run.** As the criteria on both boards: all seven types restarted
 (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage D; `157-w1-heads-700.log`,
-`157-w1-heads-700-D0-*-uart1.log`.
+**Sources.** `rity-w1.sh`, stage D; board log 157.
 
 #### W1-D1 Back-off and restart limit
 
@@ -2453,7 +2447,7 @@ W1 milestone notes record this as a known limit.
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage D; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage D; board log 157.
 
 #### W1-D2 Ten expiry and restart cycles
 
@@ -2483,7 +2477,7 @@ after: mem_pool_used 96 remap_pool_used 532 online 0-7
 **Last run.** As the criteria: 78 and 532 pages on the 510, 96 and 532 on the
 700, before and after (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage D; `157-w1-heads-700.log`.
+**Sources.** `rity-w1.sh`, stage D; board log 157.
 
 #### W1-D3 Restart after a stage-2 fault
 
@@ -2506,8 +2500,7 @@ Jun 26 09:04:10.099550 [...]: zephyr: restarted
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage D; `157-w1-heads-700.log`,
-`157-w1-heads-700-D3-uart1.log`.
+**Sources.** `rity-w1.sh`, stage D; board log 157.
 
 #### W1-D4 The rpmsg cell: detach, restart and attach again
 
@@ -2555,8 +2548,7 @@ state after: attached
 
 **Last run.** As the criteria on both boards (board logs 157 and 166).
 
-**Sources.** `rity-w1.sh`, stage D; `157-w1-heads-700.log`,
-`157-w1-heads-700-D4-uart1.log`.
+**Sources.** `rity-w1.sh`, stage D; board log 157.
 
 #### W1-D5, W1-D6 Zephyr's warm and cold reboot
 
@@ -2611,8 +2603,7 @@ reboot, `RESET_SOFTWARE`, is shown only in board log 136 (REL-10).
 script ends with the kernel's warning count, 0, and with only the root cell
 running.
 
-**Sources.** `rity-w1.sh`, stage D; `157-w1-heads-700.log`,
-`157-w1-heads-700-D5-warm-uart1.log`, `157-w1-heads-700-D5-cold-uart1.log`.
+**Sources.** `rity-w1.sh`, stage D; board log 157.
 
 ## 4. Release-level checks
 
@@ -2695,8 +2686,7 @@ Created cell "zephyr-rpmsg"
 as step 2 of IMG-03 (board logs 178 and 186). Also on 2026-10-22 on the heads
 image (board logs 158 and 167).
 
-**Sources.** `scripts/rpmsg-sample.sh`; `186-refine1-accept-700-rpmsg.log`,
-`158-rpmsg-heads-700.log`, `158-rpmsg-heads-700-uart1.log`.
+**Sources.** `rpmsg-sample.sh`; board log 186, board log 158.
 
 #### REL-02 The samples' cell launcher `genio-inmate.sh`
 
@@ -2745,7 +2735,7 @@ online 0-7
 **Last run.** As the criteria on both boards, 2026-10-22, heads image (board
 logs 159 and 168).
 
-**Sources.** `scripts/genio-inmate-test.sh`; `159-genio-inmate-heads-700.log`.
+**Sources.** `genio-inmate-test.sh`; board log 159.
 
 #### REL-03 Refusal of the root cell by a hypervisor without the MediaTek units
 
@@ -2759,7 +2749,7 @@ The script uses the image's own Jailhouse files, and leaves Jailhouse as it
 found it (enabled or not, module loaded or not). It stops if it does not see
 exactly one adb device, or if the board is not the one named.
 1. Push a hypervisor built at the image's commit without `CONFIG_SOC`
-   (`jailhouse/builds/e7fd8796-nosoc`). Without this argument, part 1 is
+   (a build of the image's commit without `CONFIG_SOC`). Without this argument, part 1 is
    skipped.
 2. Disable Jailhouse and unload the module. Bind-mount the build over
    `/usr/lib/firmware/jailhouse.bin`, so that the image's file is never
@@ -2809,8 +2799,7 @@ log 190). Before, the script's earlier form ran on 2026-10-08 with the
 release 1.0 files (board log 78); it replaced the firmware file instead of
 mounting over it.
 
-**Sources.** `scripts/extras.sh`; `190-extras-trim-700.log`,
-`78-extras-700-f7b4ff1b.log`.
+**Sources.** `extras.sh`; board log 190, board log 78.
 
 #### REL-04 Disable and enable cycles with the ivshmem device
 
@@ -2842,7 +2831,7 @@ cycle 3: disable=0 ivshmem gone after disable=yes enable=0 ivshmem 0x110a 0x4106
 **Last run.** As described, on the 700, 2026-10-26, refinement-1 image (board
 log 190). Before: 2026-10-08, release 1.0 files (board log 78).
 
-**Sources.** `scripts/extras.sh`; `190-extras-trim-700.log`.
+**Sources.** `extras.sh`; board log 190.
 
 #### REL-05 `hello_world` in the rpmsg cell
 
@@ -2886,8 +2875,7 @@ kernel warnings this boot: 0
 **Last run.** As described, on the 700, 2026-10-26, refinement-1 image (board
 log 190). Before: 2026-10-08, release 1.0 files (board log 78).
 
-**Sources.** `scripts/extras.sh`; `190-extras-trim-700.log`,
-`190-extras-trim-700-rpmsg-uart1.log`.
+**Sources.** `extras.sh`; board log 190.
 
 ### 4.3 Boot without the overlay
 
@@ -2955,8 +2943,7 @@ disable rc=0
 logs 160 and 169). Without the overlay, System RAM spans
 `61800000-13fffffff` on the 510 and `61800000-23fffffff` on the 700.
 
-**Sources.** `scripts/no-overlay.sh`; `160-no-overlay-heads-700-off.log`,
-`160-no-overlay-heads-700-restore.log`.
+**Sources.** `no-overlay.sh`; board log 160.
 
 ### 4.4 Real resets of the SoC
 
@@ -3003,7 +2990,7 @@ virtual.
 ```
 === 11:07:18.769 trigger: echo c > /proc/sysrq-trigger
 === 11:07:58 adb back with a new boot (f83cf4d8-ddb8-44ea-baad-3a1cbbc1d4b2), 18 s of waiting
-181-reset-a-sysrq-700-uart0.log: first line of the new boot at 29.798 s
+[...]: first line of the new boot at 29.798 s
 [...]
 0x1000700c: 0x80000000
 [...]
@@ -3029,9 +3016,7 @@ kernel warnings this boot: 0
 On the 510 the first attempt, board log 171, started with bit 30 already
 latched, and BL2 reported a software reboot.
 
-**Sources.** `scripts/reset-genio.sh`, `scripts/console.py`;
-`181-reset-a-sysrq-700.log`, `181-reset-a-sysrq-700-uart0.log`,
-`173-reset-a-sysrq-510-clean.log`.
+**Sources.** `reset-genio.sh`, `console.py`; board log 181, board log 173.
 
 #### REL-08 Plain reboot and the reset status
 
@@ -3074,8 +3059,7 @@ kernel warnings this boot: 0
 - The 510 on 2026-10-22: back after 14 s; BL2 and U-Boot read `STA`
   `0x40000000`, "Last reset was normal software reboot" (board log 172).
 
-**Sources.** `scripts/reset-genio.sh`; `182-reset-b-reboot-700.log`,
-`172-reset-b-reboot-510.log`.
+**Sources.** `reset-genio.sh`; board log 182, board log 172.
 
 ### 4.5 Checks of specific changes
 
@@ -3135,8 +3119,7 @@ findings.
   Wi-Fi firmware time-outs occur in the same way with Jailhouse disabled
   (log 141). They come from the BSP's driver.
 
-**Sources.** `scripts/pcie-test.sh`; `140-pcie-reset-700.log`,
-`141-pcie-rebind-native-700.log`.
+**Sources.** `pcie-test.sh`; board log 140, board log 141.
 
 #### REL-10 PSCI `SYSTEM_RESET2` (510)
 
@@ -3231,8 +3214,7 @@ That run showed the restart limit, and the cause after a warm reboot,
 only log that shows the cause after a warm reboot (W1-D5 shows the cause of
 the first start). T5 has not run with `hwinfo_api` as the restart image.
 
-**Sources.** `scripts/sr2-test.sh`; `135-sysreset2-510.log`,
-`136-sysreset2-warm-510.log`, `137-sysreset2-before-82476e42-510.log`.
+**Sources.** `sr2-test.sh`; board log 135, board log 136, board log 137.
 
 #### REL-11 In-place reload runs the new image (700)
 
@@ -3273,8 +3255,7 @@ Before the fix (board log 125):
 cases W1-M3-T11 (in place) and W1-D0 repeat the in-place reload on every
 W1 run.
 
-**Sources.** `scripts/fixes2-test.sh`; `125-fixes2-before-b8edc1fe-700.log`,
-`126-fixes2-after-dd9cec90-700.log`.
+**Sources.** `fixes2-test.sh`; board log 125, board log 126.
 
 #### REL-12 The base of a vendor entry (700)
 
@@ -3285,10 +3266,9 @@ with a message that names the cell and the rule.
 
 **Procedure.** `fixes2-test.sh`, part BASE: create the test cells
 `test-base36` (GPIO entry base 36) and `test-base32` (base 32), print the
-console and the cell list, and destroy what was created. The cells are in
-`jailhouse/testcells/fix2/`. Their sources are in `jailhouse/testcells/src/`,
-whose `build.sh` rebuilds them, and the regression's test cells, byte for
-byte.
+console and the cell list, and destroy what was created. The test cells are
+built from sources of their own, whose `build.sh` rebuilds them, and the
+regression's test cells, byte for byte.
 
 **Checks.** No coded verdict. `test-base36` is refused with the console's
 reason, and `test-base32` is created.
@@ -3309,7 +3289,8 @@ kernel warnings this boot: 0
 
 **Last run.** As the criteria on the 700, 2026-10-12 (board log 126).
 
-**Sources.** `scripts/fixes2-test.sh`, `testcells/src/build.sh`; `126-fixes2-after-dd9cec90-700.log`; the script-fix record (Section 1.5).
+**Sources.** `fixes2-test.sh`, the test cells' `build.sh`; board log 126; the
+script-fix record (Section 1.5).
 
 ## 5. Image and flash checks
 
@@ -3366,8 +3347,7 @@ kernel SRCREV 45b3ad996aa04ec748806752d03b72d1908e87cf, .config md5 b793b281f181
 `03cd6d65` on the 510, wic `0e5cdeda` and FIT `b6f4aca8` on the 700 (board
 logs 175 and 183).
 
-**Sources.** `scripts/rity-precheck.sh`; `183-precheck-refine1-700.log`,
-`175-precheck-refine1-510.log`.
+**Sources.** `rity-precheck.sh`; board log 183, board log 175.
 
 #### IMG-02 First boot of a new image
 
@@ -3418,7 +3398,7 @@ boot_conf=#conf-mediatek_mt8390-genio-700-evk.dtb#conf-video.dtbo#conf-apusys.dt
 6ba00000-6bafffff : reserved
 6bb00000-23fffffff : System RAM
 [...]
-=== DT diff against 155-first-boot-heads-700-state (memory, reserved-memory, chosen, and the devices our cells use)
+=== DT diff against [...] (memory, reserved-memory, chosen, and the devices our cells use)
 0 differences in 706 properties
 --- whole-tree count:
 0 differences in 4826 properties
@@ -3441,8 +3421,8 @@ mtk-v1.0.0 (28-ge7fd8796)
 (board logs 177 and 185). The device tree was identical to the heads image's
 first boot: 0 of 4753 properties differ on the 510, 0 of 4826 on the 700.
 
-**Sources.** `scripts/first-boot.sh`, `scripts/capture.sh`, `scripts/dt-diff.py`;
-`185-first-boot-refine1-700.log`, `177-first-boot-refine1-510.log`.
+**Sources.** `first-boot.sh`, `capture.sh`, `dt-diff.py`; board log 185, board
+log 177.
 
 #### IMG-03 Acceptance of the kernel fragment trim
 
@@ -3510,8 +3490,7 @@ kernel warnings 0
 **Last run.** All pass on both boards, 2026-10-26, refinement-1 image (board
 logs 178 and 186).
 
-**Sources.** `scripts/refine-accept.sh`; `186-refine1-accept-700.log`,
-`178-refine1-accept-510.log`.
+**Sources.** `refine-accept.sh`; board log 186, board log 178.
 
 #### IMG-04 Permissions of the Jailhouse interfaces (review check B5)
 
@@ -3520,7 +3499,7 @@ open an rpmsg device or edit the daemon's configuration controls the cells.
 On the image, all of these must be root-only. The security review asked for
 this check (B5).
 
-**Procedure.** `scripts/b5-permissions.sh`, which holds the commands of board
+**Procedure.** `b5-permissions.sh`, which holds the commands of board
 log 174 since 2026-10-26:
 - `b5-permissions.sh board <prefix>`, on the board, read-only: with no cell,
   the module is loaded once if it was not, and unloaded again; Jailhouse
@@ -3577,8 +3556,7 @@ the 510 on the board, the 700's image on the host (board log 174). The notes
 record one informational finding: the hypervisor console in sysfs is
 world-readable. The script's board mode has not run since it was written.
 
-**Sources.** `scripts/b5-permissions.sh`; `174-b5-permissions-510.log`,
-`174-b5-permissions-700-image.log`.
+**Sources.** `b5-permissions.sh`; board log 174.
 
 ## 6. Host-side checks
 
@@ -3588,9 +3566,8 @@ These checks run on the build host, without a board:
 - the hypervisor sources and cells;
 - the Zephyr image set.
 
-The Yocto checks are recorded in the integration record
-(`iot-yocto/rity-jailhouse-move/README.md`), with their outputs in
-`iot-yocto-head/night/` and `iot-yocto-head/rity-move-records/`.
+The Yocto checks are recorded in the IoT Yocto integration record, which
+quotes their outputs.
 
 #### HOST-01 Feature off equals the baseline
 
@@ -3628,7 +3605,7 @@ is explained by HOST-02. The full comparison is in
 **Purpose.** HOST-01's kernel hashes differ. The test shows that the
 difference comes from the build itself, not from the series.
 
-**Procedure.** `iot-yocto-head/stock-kernel-repro.sh`: build the stock kernel
+**Procedure.** `stock-kernel-repro.sh`: build the stock kernel
 a second time from identical inputs (`bitbake -f -c compile linux-mtk`).
 Compare its image with the baseline's, and HOST-01's two kernels with each
 other.
@@ -3638,7 +3615,7 @@ feature-off build do: same `.config`, patches, banner and size, different
 bytes.
 
 **Expected output.** The record's table, from
-`iot-yocto-head/night/repro-stock-kernel.txt`, abridged:
+the record's output `repro-stock-kernel.txt`, abridged:
 
 | | baseline vs second stock build | baseline vs feature off |
 |---|---|---|
@@ -3668,7 +3645,7 @@ Nothing else may change.
 `DISTRO_FEATURES:append = " jailhouse"` for each machine. Check the patches,
 fragments, `.config` against feature off, version, hashes, overlay, packages,
 root file system, the revision `AUTOREV` resolved to, and U-Boot. The output
-is in `night/check-featureon-<machine>.txt`.
+is in `check-featureon-<machine>.txt`.
 
 **Checks.**
 - 4 kernel patches: the 2 stock ones, the Jailhouse exports and the
@@ -3691,8 +3668,8 @@ is in `night/check-featureon-<machine>.txt`.
 
 **Last run.** Pass for both machines, 2026-10-21.
 
-**Sources.** Integration record, section 6; `night/check-featureon-genio-700-evk.txt`,
-`night/check-featureon-genio-510-evk.txt`.
+**Sources.** Integration record, section 6;
+`check-featureon-genio-700-evk.txt`, `check-featureon-genio-510-evk.txt`.
 
 #### HOST-04 The guard: Jailhouse in the image without the feature
 
@@ -3730,8 +3707,8 @@ EXIT CODE: 1
 
 **Last run.** Pass, 2026-10-21 (case 1) and 2026-10-22 (case 2).
 
-**Sources.** Integration record, section 7; `night/guard-510.log`,
-`night/guard-1200-off.log`, `night/guard-1200-on.log`.
+**Sources.** Integration record, section 7; `guard-510.log`,
+`guard-1200-off.log`, `guard-1200-on.log`.
 
 #### HOST-05 Feature on, on a machine without Jailhouse
 
@@ -3771,7 +3748,7 @@ feature off would still ship `jailhouse.dtbo` in its FIT. The fix removes the
 leftover; the test proves that it does, and that it changes nothing with
 the feature on.
 
-**Procedure.** `iot-yocto-head/fixtest.sh`, in a separate build directory with
+**Procedure.** `fixtest.sh`, in a separate build directory with
 its own `TMPDIR` and hash-equivalence database. `genio-510-evk` with the fix,
 first with the feature on, then off. Compare the off build with the stock
 baseline, and the hash-equivalence records of the two builds.
@@ -3783,27 +3760,27 @@ baseline, and the hash-equivalence records of the two builds.
 - The two builds keep separate output hashes.
 - The on build is unchanged.
 
-**Expected output.** `night/fix-dtbo-workdir.txt`, abridged:
+**Expected output.** `fix-dtbo-workdir.txt`, abridged:
 
 ```
 == after feature ON (2026-10-22 23:55:19)
--rw-r--r-- 1 mtk mtk  623 23:33:12 build-fix/tmp/work/genio_510_evk-poky-linux/dtbo/6/build/jailhouse.dtbo
--rw-r--r-- 1 mtk mtk 1259 22:14:04 build-fix/tmp/work/genio_510_evk-poky-linux/dtbo/6/jailhouse.dts
+-rw-r--r-- 1 mtk mtk  623 23:33:12 [...]/tmp/work/genio_510_evk-poky-linux/dtbo/6/build/jailhouse.dtbo
+-rw-r--r-- 1 mtk mtk 1259 22:14:04 [...]/tmp/work/genio_510_evk-poky-linux/dtbo/6/jailhouse.dts
 == after feature OFF (2026-10-23 00:34:50)
-ls: cannot access 'build-fix/tmp/work/genio_510_evk-poky-linux/dtbo/6/jailhouse.dts': No such file or directory
-ls: cannot access 'build-fix/tmp/work/genio_510_evk-poky-linux/dtbo/6/build/jailhouse.dtbo': No such file or directory
+ls: cannot access '[...]/tmp/work/genio_510_evk-poky-linux/dtbo/6/jailhouse.dts': No such file or directory
+ls: cannot access '[...]/tmp/work/genio_510_evk-poky-linux/dtbo/6/build/jailhouse.dtbo': No such file or directory
 == feature-off log.do_compile (dtbo): jailhouse lines
 DEBUG: Executing python function jailhouse_drop_stale_overlay
 DEBUG: Python function jailhouse_drop_stale_overlay finished
 ```
 
 The content comparison with the baseline is in
-`iot-yocto/rity-jailhouse-move/fixes/identity-baseline-vs-fix-off-genio-510-evk.txt`.
+the record's comparison `identity-baseline-vs-fix-off-genio-510-evk.txt`.
 
 **Last run.** Pass, 2026-10-22 23:13 to 2026-10-23 00:35. The fix is not part
 of the initial series.
 
-**Sources.** Integration record, sections 9.1 and 11; `night/fix-dtbo-workdir.txt`.
+**Sources.** Integration record, sections 9.1 and 11; `fix-dtbo-workdir.txt`.
 
 #### HOST-07 Hypervisor sources compile cleanly
 
@@ -3811,12 +3788,12 @@ of the initial series.
 warnings under the hypervisor's own strict flags (`-Werror -Wall -Wextra` and
 more). A quick check is possible without a kernel tree.
 
-**Procedure.** `scripts/hvcheck.sh [-i] <file.c>...`: generate the version
+**Procedure.** `hvcheck.sh [-i] <file.c>...`: generate the version
 and assembler-offset headers in a temporary directory, removed at the end,
 then run `aarch64-linux-gnu-gcc -fsyntax-only` with the hypervisor's flags
 (or the inmates' with `-i`) on each file. This is a syntax and warning check,
 not a build. Since 2026-10-26 the output is also kept in
-`board-logs/hvcheck-<date>.log`.
+a board log `hvcheck-<date>.log`.
 
 **Checks.** Coded: `OK  <file>` per file. The exit status is non-zero if any
 file fails.
@@ -3834,7 +3811,7 @@ OK  [...]/hypervisor/arch/arm64/mtk-mt8188-wdt.c
 which cover all sources: every commit builds with and without
 `CONFIG_SOC=mt8188`, with 0 warnings.
 
-**Sources.** `scripts/hvcheck.sh`; `board-logs/hvcheck-20261026-132415.log`.
+**Sources.** `hvcheck.sh`; the board log `hvcheck-20261026-132415.log`.
 
 #### HOST-08 Cell configurations: build and `jailhouse-config-check`
 
@@ -3843,7 +3820,7 @@ configuration checker together with its root cell. The checker finds
 overlapping memory, missing devices and invalid entries before a board
 does.
 
-**Procedure.** `scripts/cellcheck.sh <build dir> <510|700> [more .cell]`, on
+**Procedure.** `cellcheck.sh <build dir> <510|700> [more .cell]`, on
 a built hypervisor tree:
 1. Take the board's root cell and every other cell that the build made from
    the board's cell table (`configs/arm64/genio-<board>-evk-cells.c`, since
@@ -3851,7 +3828,7 @@ a built hypervisor tree:
 2. Print their md5, and run `tools/jailhouse-config-check` on all of them
    together.
 
-The output is also kept in `board-logs/cellcheck-<board>-<build>-<date>.log`.
+The output is also kept in a board log `cellcheck-<board>-<build>-<date>.log`.
 Until 2026-10-26 the script compiled one `.cell` per `.c` file, which no
 longer matches the cell tables.
 
@@ -3864,13 +3841,13 @@ abridged, paths shortened:
 === Mon Oct 26 01:24:06 PM PDT 2026 mtk-v1.0.0-28-ge7fd8796, genio-700-evk
 25ca9f48 [...]/configs/arm64/genio-700-evk.cell
 [...]
-a9bee36a [...]/testcells/700/test-ok.cell
+a9bee36a [...]/test-ok.cell
 Reading configuration set:
   Architecture:  arm64
   Root cell:     genio-700-evk ([...]/genio-700-evk.cell)
   Non-root cell: uart-demo ([...]/genio-700-evk-uart-demo.cell)
 [...]
-  Non-root cell: test-ok ([...]/testcells/700/test-ok.cell)
+  Non-root cell: test-ok ([...]/test-ok.cell)
 Overlapping memory regions inside cell: None
 Overlapping memory regions with hypervisor: None
 Missing PCI MMCONFIG interceptions: None
@@ -3883,8 +3860,8 @@ and the test cell `test-ok`. For the 510 the last record is the W1 milestone
 notes' gate of 2026-10-12: `jailhouse-config-check` (revision 16) clean for
 both boards.
 
-**Sources.** `scripts/cellcheck.sh`;
-`board-logs/cellcheck-700-e7fd8796-700-20261026-132406.log`.
+**Sources.** `cellcheck.sh`; the board log
+`cellcheck-700-e7fd8796-700-20261026-132406.log`.
 
 #### HOST-09 Zephyr build sets
 
@@ -3916,7 +3893,7 @@ executed.
 
 **Last run.** Pass, 2026-10-21.
 
-**Sources.** `zephyr/build/rel-1.1/README.md`, `twister-samples.out`,
+**Sources.** The record of the Zephyr image set; `twister-samples.out`,
 `twister-all.out`.
 
 #### HOST-10 Zephyr image manifest and comparison with the tested images
@@ -3927,7 +3904,7 @@ content, so those runs stand for them.
 
 **Procedure.** Record the md5 of every image in `MANIFEST.md5`. Compare the
 set, with `compare.py`, against the set that ran on the boards
-(`../uart-dma-en`), ignoring the build hash and twister's run ID.
+(`uart-dma-en`), ignoring the build hash and twister's run ID.
 
 **Checks.** Every image with a counterpart is identical apart from the build
 hash, and the images without one are explained.
@@ -3935,7 +3912,7 @@ hash, and the images without one are explained.
 **Expected output.** `compare.txt`:
 
 ```
-rel-1.1 against [...]/zephyr/build/uart-dma-en
+rel-1.1 against [...]/uart-dma-en
 identical apart from the build hash (and the twister RunID): 141
 different: 0
 no counterpart there: 6
@@ -3947,7 +3924,7 @@ after that set. `rpmsg-test` is byte-identical to the tested binary
 
 **Last run.** Pass, 2026-10-21.
 
-**Sources.** `zephyr/build/rel-1.1/README.md`, `compare.txt`, `MANIFEST.md5`.
+**Sources.** The record of the Zephyr image set; `compare.txt`, `MANIFEST.md5`.
 
 ## 7. Status of the scripts
 
@@ -4014,12 +3991,12 @@ followed, as the script-fix record lists them.
 |---|---|---|
 | W1-TWO, case 2 | `rity-w1.sh` and `m3-two.sh` load `wdt-probe-4-nouart.bin` into `wdt-b`, and the console check also shows `Unhandled` lines | Board log 188 |
 | W1-M3-T18 | An expected-`EBUSY` check; no traceback | Board log 189 |
-| `m3-two.sh` | Pushes `wdt-b.cell` from `testcells/m3/` | – |
+| `m3-two.sh` | Pushes `wdt-b.cell` from where the test cells are now | – |
 | REL-03 to REL-05 | `extras.sh` repaired: its helpers folded in, the image's own files used, the refusal by a bind mount, Jailhouse left as found. New usage `extras.sh <board> <log prefix> [no-SoC jailhouse.bin]` | Board log 190 |
 | REL-09 | `pcie-test.sh`'s header states that the rebind does not reach `SWSYSRST` on this BSP | – |
 | REL-10 | `sr2-test.sh`'s case T5 needs a restart image other than the warm-reboot application, names it, and keeps the daemon's configuration. The header records what log 136 showed | Not run since |
-| REL-11, REL-12 and the regression's test cells | `pcie-test.sh`, `sr2-test.sh` and `fixes2-test.sh` take the adb transport from `ADB_T`, and read `scripts/poll-state.py`, `tools-board/` and `testcells/fix2/`. The sources of the test cells are in `testcells/src/`; `build.sh` rebuilds all eight cells byte for byte | The script-fix record |
-| HOST-07 | `hvcheck.sh` keeps its generated headers in a temporary directory, and its output in `board-logs/` | `hvcheck-20261026-132415.log` |
+| REL-11, REL-12 and the regression's test cells | `pcie-test.sh`, `sr2-test.sh` and `fixes2-test.sh` take the adb transport from `ADB_T`, and read `poll-state.py`, the test tools and the REL-12 test cells from the workspace, not from a temporary directory. The sources of the test cells are recovered; their `build.sh` rebuilds all eight cells byte for byte | The script-fix record |
+| HOST-07 | `hvcheck.sh` keeps its generated headers in a temporary directory, and its output as a board log | `hvcheck-20261026-132415.log` |
 | HOST-08 | `cellcheck.sh` rewritten for the per-board cell tables | `cellcheck-700-e7fd8796-700-20261026-132406.log` |
 | IMG-04 | `b5-permissions.sh`, the commands of board log 174 as a script | Board mode not run since |
 | R-21, R-42, R-45, R-46 | `regression.sh` keeps the unfiltered UART output (`<name>.raw`), prints the refusal messages as the detail of R-45 and R-46, and R-42's comment is corrected | Next regression run |
@@ -4128,3 +4105,4 @@ TEST-INDEX
 |---|---|---|
 | 1.0 | 2026-10-26 | First issue, for review |
 | 1.1 | 2026-10-26 | Re-runs of W1-TWO, W1-M3-T18 and REL-03 to REL-05 (board logs 188 to 190) and the script changes of 2026-10-26 in the entries and Chapter 7; the reset cause in W1-D5/D6 and REL-10; Chapter 8, proposed coded criteria |
+| 1.1.1 | 2026-10-26 | Public copy: the sources are cited by board log number and file name, without the paths of the internal workspace. No test, check or result changed |

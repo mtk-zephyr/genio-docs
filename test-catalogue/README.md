@@ -4,13 +4,14 @@
 MediaTek Jailhouse and Zephyr on the Genio 510 and Genio 700 EVKs: what each
 test does, why it is needed, what it checks, and the output of a passing
 run, taken from the test scripts and the logs of the board runs. This is
-revision 1.1, for review (2026-10-26). It covers the release that is now
-MediaTek Jailhouse v26.1, with 111 tests in 91 entries.
+revision 1.1.1, for review (2026-10-26): revision 1.1 with its sources cited
+without the paths of the internal workspace. It covers the release that is
+now MediaTek Jailhouse v26.1, with 111 tests in 91 entries.
 
 | File | Purpose |
 |---|---|
 | `genio-test-catalogue.md` | The text: one entry per test |
-| `genio-test-catalogue.pdf` | The PDF of revision 1.1 |
+| `genio-test-catalogue.pdf` | The PDF of revision 1.1.1 |
 | `build-catalogue.py` | Builds the PDF. On top of `../tools/docbuild.py` it sets the test headings, adds page references to test identifiers, and fills in the test index |
 | `catalogue.css` | Additions to `../tools/guide.css`: test headings and the index |
 
@@ -28,19 +29,13 @@ output PDF.
 
 ## Where the sources of the tests are
 
-The catalogue cites its sources by path, relative to MediaTek's engineering
-workspace for these releases:
-
-- the test scripts: `jailhouse/regression.sh`, `jailhouse/scripts/`, and the
-  test inmates and tools in `jailhouse/tools-board/`;
-- the board logs: `jailhouse/board-logs/`, cited by number;
-- the build records: `iot-yocto/rity-jailhouse-move/README.md` and
-  `zephyr/build/rel-1.1/README.md`, with the outputs they quote.
-
-These, and the engineering notes that Section 1.5 names, are internal: they
-are not in a public repository. The README that Section 1.5 refers to for
-the notes' file names is the internal copy. The software that the tests
-cover is public: [MediaTek Jailhouse](https://github.com/mtk-jailhouse/jailhouse),
+The catalogue cites its sources by name: the test scripts and test tools by
+file name, the board logs by number, and the build records and engineering
+notes by what they are. All of these are internal to MediaTek's engineering
+workspace for these releases, and are not in a public repository. The
+internal copy of the catalogue gives their locations. The software that the
+tests cover is public:
+[MediaTek Jailhouse](https://github.com/mtk-jailhouse/jailhouse),
 the [Genio Zephyr tree](https://github.com/mtk-zephyr/mtk-zephyr) and the
 [Genio Zephyr samples](https://github.com/mtk-zephyr/samples).
 
