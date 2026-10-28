@@ -496,14 +496,15 @@ The following checks run on the board.
    and the third lists the nine cells of your board (see
    [Section 10.2](#102-cells)).
 
-   > **Note:** The driver, `jailhouse --version` and the hypervisor's start-up
-   > line report the same version. A build at the release tag reports
-   > `v26.1 (0-g<commit>)`, and a build at a release-candidate tag
-   > `v26.1-rc<N> (0-g<commit>)`: builds of the pre-release `v26.1-rc1`
-   > report `v26.1-rc1 (0-g2c8e5f75)`. Builds of later commits of the branch
-   > `scarthgap` report the last tag and the number of commits since it, for
-   > example `v26.1 (<n>-g<commit>)`, and builds of commits before the first
-   > `v26.1` tag report `26.1 (<commit>)`.
+   > **Note:** The driver and the hypervisor's start-up line report the same
+   > version. A build at the release tag reports `v26.1 (0-g<commit>)`, and a
+   > build at a release-candidate tag `v26.1-rc<N> (0-g<commit>)`: builds of
+   > the pre-release `v26.1-rc1` report `v26.1-rc1 (0-g2c8e5f75)`. Builds of
+   > later commits of the branch `scarthgap` report the last tag and the
+   > number of commits since it, for example `v26.1 (<n>-g<commit>)`, and
+   > builds of commits before the first `v26.1` tag report `26.1 (<commit>)`.
+   > `jailhouse --version` prints only the version number of the source
+   > tree, `Jailhouse management tool 26.1`.
 
 ---
 
