@@ -1815,9 +1815,9 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
   [Section 6.4](#64-choosing-a-cell)).
 - Multi-core cells start their CPUs only through PSCI over `smc`.
 - A single-core image in a two-core cell may not receive device interrupts,
-  such as UART1 receive: an interrupt stays on the CPU that last received it
-  if that CPU belongs to the new cell, and a single-core image does not move
-  it to its own CPU. SMP images are not affected.
+  such as UART1 receive: an interrupt stays routed to the CPU it was last
+  routed to if that CPU belongs to the new cell, and a single-core image does
+  not route it to its own CPU. SMP images are not affected.
 - More cores in a cell do not speed up interrupt handling: one core runs a
   handler. They help only work that runs in parallel.
 - Linux can change the pin configuration (pull, drive strength, input
