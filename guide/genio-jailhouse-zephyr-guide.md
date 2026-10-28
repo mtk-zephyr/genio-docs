@@ -8,7 +8,7 @@
 | Applies to | Genio 510 EVK (MT8370), Genio 700 EVK (MT8390) |
 | Software | IoT Yocto v26.1 (`rity-scarthgap-v26.1`) with the `jailhouse` feature; MediaTek Jailhouse `v26.1`; MediaTek Genio Zephyr `v26.1-rc1` (Zephyr 4.4.2) with Zephyr SDK 1.0.1 |
 | License | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| Last updated | 2026-10-26 |
+| Last updated | 2026-10-28 |
 
 ---
 
