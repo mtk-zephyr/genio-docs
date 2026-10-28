@@ -6,7 +6,7 @@
 |---|---|
 | Document status | Pre-release v26.1-rc1, final at v26.1 |
 | Applies to | Genio 510 EVK (MT8370), Genio 700 EVK (MT8390) |
-| Software | IoT Yocto v26.1 (`rity-scarthgap-v26.1`) with the `jailhouse` feature; MediaTek Jailhouse `v26.1`; MediaTek Genio Zephyr (Zephyr 4.5), tree `2e9e70f0a16c` and samples `b962ff34104b`, with Zephyr SDK 1.0.1 |
+| Software | IoT Yocto v26.1 (`rity-scarthgap-v26.1`) with the `jailhouse` feature; MediaTek Jailhouse `v26.1`; MediaTek Genio Zephyr `v26.1-rc1` (Zephyr 4.4.2) with Zephyr SDK 1.0.1 |
 | License | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | Last updated | 2026-10-26 |
 
@@ -134,17 +134,9 @@ Cortex-A55 cores (see [Section 6.4](#64-choosing-a-cell)).
 | IoT Yocto BSP v26.1 | `https://gitlab.com/mediatek/aiot/bsp/manifest.git`, tag `rity-scarthgap-v26.1` | Yocto Project 5.0 (Scarthgap), Linux 6.6 |
 | `meta-mediatek-bsp` and `meta-rity` | Part of the BSP manifest | With the `jailhouse` distribution feature: the `jailhouse` recipe (MediaTek Jailhouse), the Jailhouse kernel support and the device-tree overlay `jailhouse.dtbo` (`meta-mediatek-bsp`), and Jailhouse in `rity-bringup-image` (`meta-rity`) |
 | MediaTek Jailhouse | `https://github.com/mtk-jailhouse/jailhouse`, release tag `v26.1` on the branch `scarthgap` | Built by the `jailhouse` recipe from the release tag; you do not need to fetch it yourself |
-| Genio Zephyr tree | `https://github.com/mtk-zephyr/mtk-zephyr`, branch `mtk-genio-dev` at commit `2e9e70f0a16c` | Zephyr 4.5 with the Genio board support |
-| Genio Zephyr samples | `https://github.com/mtk-zephyr/samples`, branch `main` at commit `b962ff34104b` | West manifest repository; fetches the Zephyr tree and its modules |
+| Genio Zephyr tree | `https://github.com/mtk-zephyr/mtk-zephyr`, tag `v26.1-rc1` on the branch `mtk-v4.4.2` | Zephyr 4.4.2 with the Genio board support |
+| Genio Zephyr samples | `https://github.com/mtk-zephyr/samples`, tag `v26.1-rc1` | West manifest repository; fetches the Zephyr tree at its tag `v26.1-rc1`, and its modules |
 | Zephyr SDK | Installed with `west sdk install` | Version 1.0.1, as set in the tree's `SDK_VERSION` file; only the `aarch64-zephyr-elf` toolchain is needed |
-
-> **Note:** The Genio Zephyr side has no release tag for MediaTek Jailhouse
-> v26.1 yet. This guide creates the Zephyr workspace at the two commits that
-> v26.1 was tested with, as its release notes name them (see
-> [Section 5.2](#52-creating-the-workspace)); a later revision of the guide
-> names the Zephyr tag. The head of the development branch `mtk-genio-dev`
-> of the Genio Zephyr tree moves on, and may be rewritten before the Zephyr
-> tag; the commits of this guide are the tested ones.
 
 ### 2.3 Host computer
 
@@ -153,10 +145,10 @@ Cortex-A55 cores (see [Section 6.4](#64-choosing-a-cell)).
 writing, MediaTek verifies builds on Ubuntu 22.04 LTS and asks for at least
 400 GiB of free disk space and 64 GiB of RAM for a 16-core system.
 
-**Zephyr builds.** The Genio Zephyr tree is Zephyr 4.5, which needs at least
-CMake 3.28, Python 3.12 and the devicetree compiler 1.4.6 (see the
+**Zephyr builds.** The Genio Zephyr tree is Zephyr 4.4.2, which needs at
+least CMake 3.20.5, Python 3.12 and the devicetree compiler 1.4.6 (see the
 [Zephyr Getting Started Guide][zephyr-gsg]). Ubuntu 24.04 LTS provides these
-versions; on Ubuntu 22.04, install newer CMake and Python first. Zephyr builds
+versions; on Ubuntu 22.04, install a newer Python first. Zephyr builds
 need a few GiB of disk space and no special amount of RAM.
 
 You can use one workstation for both, or separate ones.
@@ -536,9 +528,8 @@ dtc --version
 
 The Genio samples repository is the west manifest of the workspace. One
 `west init` and `west update` fetch the Genio Zephyr tree, the modules it
-needs and the samples. This guide uses the commits that MediaTek Jailhouse
-v26.1 was tested with (see [Section 2.2](#22-software-components)): the
-samples at `b962ff34104b` and the Genio Zephyr tree at `2e9e70f0a16c`.
+needs and the samples, at the tags `v26.1-rc1` of the samples and the tree
+(see [Section 2.2](#22-software-components)).
 
 1. Create the workspace directory and a Python virtual environment, and
    install west:
@@ -555,22 +546,14 @@ samples at `b962ff34104b` and the Genio Zephyr tree at `2e9e70f0a16c`.
    Activate the virtual environment (`source .venv/bin/activate`) in every
    new shell before you use west.
 
-2. Initialize and fetch the workspace, and put the samples and the tree on
-   the tested commits:
+2. Initialize and fetch the workspace:
 
    **Host**
 
    ```bash
-   west init -m https://github.com/mtk-zephyr/samples --mr main .
-   git -C samples checkout b962ff34104b0348a406526ef50544e21aac851f
+   west init -m https://github.com/mtk-zephyr/samples --mr v26.1-rc1 .
    west update
-   git -C zephyr checkout 2e9e70f0a16c9497f0e04a4c0f2e823d115e72b2
    ```
-
-   The samples' manifest selects the branch `mtk-genio-dev` of the Genio
-   Zephyr tree; the last command puts the tree on the tested commit. A later
-   `west update` moves the tree to the head of the branch again; repeat the
-   last command after it.
 
    To save time and disk space, you can fetch only the latest history:
    `west update --narrow -o=--depth=1`.
@@ -1896,4 +1879,4 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 | 0.9 | 2026-10-04 | Initial draft for review |
 | 0.9.1 | 2026-10-08 | UART0 named by its board label only. Linux sets the clocks of both CPU clusters; use the `performance` governor for measurements (Sections 6.4, 6.6, 9.7). How an SMP image fails in a cell other than an SMP cell (Section 6.5). Two new troubleshooting entries. The hypervisor of mtk-v1.0: its start-up messages (Section 6.2), and pin configuration registers that stay with Linux (Sections 9.3, 9.7). Section numbers as in revision 0.9.1. |
 | 1.0 | 2026-10-08 | First release, for MediaTek Jailhouse `mtk-v1.0.0` and Genio Zephyr `mtk-genio-v1.0.0`. RPMsg with Linux (Section 7.4). The layer's `jailhouse` recipe builds the release branch `mtk-v1.0` and installs the cells of one board (Sections 2.2, 3.3, 4.4, 9.2). The Zephyr workspace is created at the release tag (Section 5.2). Known limitations in step with the release notes (Section 9.7). Two new troubleshooting entries. Section numbers as in revision 1.0. |
-| 26.1 | 2026-10-26 | Release for MediaTek Jailhouse `v26.1` (developed as 1.1, which has no release of its own) with IoT Yocto v26.1, and the Genio Zephyr tree and samples at the commits named by the v26.1 release notes (Sections 2.2, 5.2). Jailhouse is built with the `jailhouse` feature of IoT Yocto v26.1 and its overlay `jailhouse.dtbo` (Chapters 3, 4 and 9). The version that the driver and the hypervisor report (Section 4.4). A watchdog for each Zephyr cell, and the cell restart daemon (Chapter 8; the former Chapters 8-10 are now 9-11). Each cell is named after its file (Sections 6.3-6.5, 7.4, 10.2, 10.6). Configuration format revision 16; the AFE cells no longer map the reset block (Sections 10.2, 10.3). The UART1 rules (Sections 6.1, 6.10). Limitations in step with the release notes (Section 10.7). The clock of a cell that takes both Cortex-A78 cores (Section 6.4), cacheable audio buffers (Section 7.3), and what more cores in a cell do and do not speed up (Section 10.7). |
+| 26.1 | 2026-10-26 | Release for MediaTek Jailhouse `v26.1` (developed as 1.1, which has no release of its own) with IoT Yocto v26.1, and the Genio Zephyr tree and samples at their tags `v26.1-rc1`, on Zephyr 4.4.2 (Sections 2.2, 2.3, 5.2). Jailhouse is built with the `jailhouse` feature of IoT Yocto v26.1 and its overlay `jailhouse.dtbo` (Chapters 3, 4 and 9). The version that the driver and the hypervisor report (Section 4.4). A watchdog for each Zephyr cell, and the cell restart daemon (Chapter 8; the former Chapters 8-10 are now 9-11). Each cell is named after its file (Sections 6.3-6.5, 7.4, 10.2, 10.6). Configuration format revision 16; the AFE cells no longer map the reset block (Sections 10.2, 10.3). The UART1 rules (Sections 6.1, 6.10). Limitations in step with the release notes (Section 10.7). The clock of a cell that takes both Cortex-A78 cores (Section 6.4), cacheable audio buffers (Section 7.3), and what more cores in a cell do and do not speed up (Section 10.7). |
