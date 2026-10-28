@@ -604,7 +604,9 @@ By default, the SDK is installed in your home directory. Run
 - The **single-core** targets build images for one CPU. The same image runs
   on the default Cortex-A55 cell and on the Cortex-A78 cell.
 - The **SMP** targets build images for the two-core cells (CPU 2 and 3). A
-  single-core image also runs in a two-core cell, on its first CPU only.
+  single-core image also starts in a two-core cell, on its first CPU only,
+  but may not receive device interrupts there; use the SMP build in a
+  two-core cell (see [Section 10.7](#107-known-limitations)).
 
 ### 5.5 Building `hello_world`
 
@@ -1812,6 +1814,10 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
   that Linux selects for the cluster of its CPUs (see
   [Section 6.4](#64-choosing-a-cell)).
 - Multi-core cells start their CPUs only through PSCI over `smc`.
+- A single-core image in a two-core cell may not receive device interrupts,
+  such as UART1 receive: an interrupt stays on the CPU that last received it
+  if that CPU belongs to the new cell, and a single-core image does not move
+  it to its own CPU. SMP images are not affected.
 - More cores in a cell do not speed up interrupt handling: one core runs a
   handler. They help only work that runs in parallel.
 - Linux can change the pin configuration (pull, drive strength, input
@@ -1879,4 +1885,4 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 | 0.9 | 2026-10-04 | Initial draft for review |
 | 0.9.1 | 2026-10-08 | UART0 named by its board label only. Linux sets the clocks of both CPU clusters; use the `performance` governor for measurements (Sections 6.4, 6.6, 9.7). How an SMP image fails in a cell other than an SMP cell (Section 6.5). Two new troubleshooting entries. The hypervisor of mtk-v1.0: its start-up messages (Section 6.2), and pin configuration registers that stay with Linux (Sections 9.3, 9.7). Section numbers as in revision 0.9.1. |
 | 1.0 | 2026-10-08 | First release, for MediaTek Jailhouse `mtk-v1.0.0` and Genio Zephyr `mtk-genio-v1.0.0`. RPMsg with Linux (Section 7.4). The layer's `jailhouse` recipe builds the release branch `mtk-v1.0` and installs the cells of one board (Sections 2.2, 3.3, 4.4, 9.2). The Zephyr workspace is created at the release tag (Section 5.2). Known limitations in step with the release notes (Section 9.7). Two new troubleshooting entries. Section numbers as in revision 1.0. |
-| 26.1 | 2026-10-26 | Release for MediaTek Jailhouse `v26.1` (developed as 1.1, which has no release of its own) with IoT Yocto v26.1, and the Genio Zephyr tree and samples at their tags `v26.1-rc1`, on Zephyr 4.4.2 (Sections 2.2, 2.3, 5.2). Jailhouse is built with the `jailhouse` feature of IoT Yocto v26.1 and its overlay `jailhouse.dtbo` (Chapters 3, 4 and 9). The version that the driver and the hypervisor report (Section 4.4). A watchdog for each Zephyr cell, and the cell restart daemon (Chapter 8; the former Chapters 8-10 are now 9-11). Each cell is named after its file (Sections 6.3-6.5, 7.4, 10.2, 10.6). Configuration format revision 16; the AFE cells no longer map the reset block (Sections 10.2, 10.3). The UART1 rules (Sections 6.1, 6.10). Limitations in step with the release notes (Section 10.7). The clock of a cell that takes both Cortex-A78 cores (Section 6.4), cacheable audio buffers (Section 7.3), and what more cores in a cell do and do not speed up (Section 10.7). |
+| 26.1 | 2026-10-26 | Release for MediaTek Jailhouse `v26.1` (developed as 1.1, which has no release of its own) with IoT Yocto v26.1, and the Genio Zephyr tree and samples at their tags `v26.1-rc1`, on Zephyr 4.4.2 (Sections 2.2, 2.3, 5.2). Jailhouse is built with the `jailhouse` feature of IoT Yocto v26.1 and its overlay `jailhouse.dtbo` (Chapters 3, 4 and 9). The version that the driver and the hypervisor report (Section 4.4). A watchdog for each Zephyr cell, and the cell restart daemon (Chapter 8; the former Chapters 8-10 are now 9-11). Each cell is named after its file (Sections 6.3-6.5, 7.4, 10.2, 10.6). Configuration format revision 16; the AFE cells no longer map the reset block (Sections 10.2, 10.3). The UART1 rules (Sections 6.1, 6.10). Limitations in step with the release notes (Section 10.7). The clock of a cell that takes both Cortex-A78 cores (Section 6.4), cacheable audio buffers (Section 7.3), and what more cores in a cell do and do not speed up (Section 10.7). Single-core images in a two-core cell may not receive device interrupts (Sections 5.4, 10.7). |
