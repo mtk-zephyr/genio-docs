@@ -4,14 +4,14 @@
 MediaTek Jailhouse and Zephyr on the Genio 510 and Genio 700 EVKs: what each
 test does, why it is needed, what it checks, and the output of a passing
 run, taken from the test scripts and the logs of the board runs. This is
-revision 1.1.1, for review (2026-10-26): revision 1.1 with its sources cited
-without the paths of the internal workspace. It covers the release that is
-now MediaTek Jailhouse v26.1, with 111 tests in 91 entries.
+revision 1.2, for review (2026-11-02), with its sources cited without the
+paths and file names of the internal workspace. It covers the release that
+is now MediaTek Jailhouse v26.1, with 111 tests in 91 entries.
 
 | File | Purpose |
 |---|---|
 | `genio-test-catalogue.md` | The text: one entry per test |
-| `genio-test-catalogue.pdf` | The PDF of revision 1.1.1 |
+| `genio-test-catalogue.pdf` | The PDF of revision 1.2 |
 | `build-catalogue.py` | Builds the PDF. On top of `../tools/docbuild.py` it sets the test headings, adds page references to test identifiers, and fills in the test index |
 | `catalogue.css` | Additions to `../tools/guide.css`: test headings and the index |
 
@@ -30,14 +30,14 @@ output PDF.
 ## Where the sources of the tests are
 
 The catalogue cites its sources by name: the test scripts and test tools by
-file name, the board logs by number, and the build records and engineering
-notes by what they are. All of these are internal to MediaTek's engineering
+file name, the board logs by number, and the build records, their helper
+scripts and outputs, and the engineering notes by what they are. All of these are internal to MediaTek's engineering
 workspace for these releases, and are not in a public repository. The
 internal copy of the catalogue gives their locations. The software that the
 tests cover is public:
 [MediaTek Jailhouse](https://github.com/mtk-jailhouse/jailhouse),
-the [Genio Zephyr tree](https://github.com/mtk-zephyr/mtk-zephyr) and the
-[Genio Zephyr samples](https://github.com/mtk-zephyr/samples).
+[MediaTek Zephyr](https://github.com/mtk-zephyr/mtk-zephyr) and
+[MediaTek Zephyr Samples](https://github.com/mtk-zephyr/samples).
 
 ## Statements that do not come from a script or a log
 
@@ -46,7 +46,8 @@ the [Genio Zephyr tree](https://github.com/mtk-zephyr/mtk-zephyr) and the
 | Purpose fields | Why each test is needed | Written for the catalogue from the scripts' comments and the engineering notes; explanations, not quotations |
 | Checks of the tests without a coded verdict | The pass criteria | The engineering notes and the scripts' headers, as each entry says |
 | Chapter 7 | The status of the scripts | Reading the scripts against the logs; Section 7.4 from the record of the script changes of 2026-10-26 |
-| Chapter 8 | The proposed coded criteria | A proposal of 2026-10-26, condensed; not implemented |
+| Chapter 8 | The proposed coded criteria | A proposal of 2026-10-26, condensed, as corrected that day; not implemented |
+| REL-01, IMG-03 | Before 2026-10-26 the printed return code of `rpmsg-test` was that of a bare `wait` | The script's header and the engineering notes |
 | Chapter 6 | Results of the host-side checks | The build records, which quote their outputs |
 
 ## License

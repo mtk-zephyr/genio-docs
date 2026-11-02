@@ -4,9 +4,9 @@
 |---|---|
 | Document status | For review |
 | Applies to | Genio 510 EVK (MT8370) and Genio 700 EVK (MT8390) |
-| Software | MediaTek Jailhouse `e7fd8796`; IoT Yocto `rity-bringup-image` with the `jailhouse` feature, Linux 6.6.152; Genio Zephyr image set rel-1.1 |
+| Software | MediaTek Jailhouse `e7fd8796`; IoT Yocto `rity-bringup-image` with the `jailhouse` feature, Linux 6.6.152; MediaTek Zephyr image set rel-1.1 |
 | Data | Board runs from 2026-10-08 to 2026-10-26 |
-| Last updated | 2026-10-26 |
+| Last updated | 2026-11-02 |
 
 ---
 
@@ -116,12 +116,13 @@ Conventions:
   - The **refinement-1 image** (2026-10-26) differs only in the kernel
     configuration: `HOTPLUG_PCI_PCIE` is off, and `MTK_JH_REMOTEPROC`,
     `RPMSG_CHAR` and `RPMSG_CTRL` are modules.
-- **The hypervisor** is MediaTek Jailhouse `mtk-genio-dev` `e7fd8796`. It
-  reports itself as `mtk-v1.0.0 (28-ge7fd8796)`, because release 1.1 is not
-  tagged yet. The cell configurations are revision 16.
-- **Zephyr** is the rel-1.1 image set: mtk-zephyr `2e9e70f0a16`, the samples
-  at `b962ff3`, Zephyr SDK 1.0.1. The images print `Zephyr OS build
-  2e9e70f0a16c`.
+- **The hypervisor** is MediaTek Jailhouse of the v26.1 line, on the branch
+  `scarthgap`. The runs predate its tags: the 1.1 work became release 26.1,
+  first as the pre-release `v26.1-rc1`. Section 1.4 explains the version
+  string in the outputs. The cell configurations are revision 16.
+- **Zephyr** is the rel-1.1 image set: MediaTek Zephyr at `2e9e70f0a16`,
+  MediaTek Zephyr Samples at `b962ff3`, Zephyr SDK 1.0.1. The images print
+  `Zephyr OS build 2e9e70f0a16c`.
 - **Test tools**, pushed to `/root` by the scripts:
   - `regs32`, 32-bit and 8-bit register access from Linux;
   - `gicd-spi.py`, the GIC distributor state of one interrupt;
@@ -145,7 +146,7 @@ Conventions:
 |---|---|---|
 | Regression, R-01 to R-52 | 52/52, 2026-10-26, refinement-1 image (log 179) | 52/52, 2026-10-26, refinement-1 image (log 187) |
 | Watchdog set W1 | 2026-10-22, heads image (log 166) | 2026-10-22, heads image (log 157); W1-TWO and W1-M3-T18 2026-10-26, refinement-1 image (logs 188, 189) |
-| REL-01 rpmsg sample | 2026-10-26 (log 178) | 2026-10-26 (log 186) |
+| REL-01 rpmsg sample | 2026-10-26 (log 178), earlier script | 2026-10-26 (logs 191, 192); earlier script: log 186 |
 | REL-02 `genio-inmate.sh` | 2026-10-22 (log 168) | 2026-10-22 (log 159) |
 | REL-03 to REL-05 | – | 2026-10-26, refinement-1 image (log 190) |
 | REL-06 no overlay | 2026-10-22 (log 169) | 2026-10-22 (log 160) |
@@ -161,6 +162,11 @@ All latest results are passes. In the W1 runs of 2026-10-22 (logs 157 and
 166), the second case of W1-TWO did not reach the watchdog because of a
 script error; the case passed on the 700 when run again on 2026-10-26 (log
 188). Section 7.4 lists the script changes of that day.
+
+Version strings inside the expected outputs are what the tools printed at
+the time of the run. The refs they name, the 1.0 release line and the
+former development branch of MediaTek Jailhouse, are superseded by
+MediaTek Jailhouse v26.1 on the branch `scarthgap`.
 
 ### 1.5 Sources
 
@@ -443,7 +449,7 @@ and 187).
   mediated GPIO and EINT registers, including every interrupt type. This
   checks the GPIO and EINT units from the cell's side.
 
-**Procedure.** `run_zephyr` in `-zephyr`, 12 s each, with the Genio samples:
+**Procedure.** `run_zephyr` in `-zephyr`, 12 s each, with MediaTek Zephyr Samples:
 
 | Test | Sample | Log |
 |---|---|---|
@@ -2518,7 +2524,8 @@ Otherwise Linux's rpmsg devices would hang on a dead peer.
 4. Print the journal, and run `rpmsg-test` again.
 
 **Checks** (W1 milestone notes).
-- `rpmsg-test` attaches and receives "Hello from Zephyr! 2, 3".
+- `rpmsg-test` attaches, receives "Hello from Zephyr! 2, 3", and returns
+  124.
 - After the reset, the daemon detaches the remoteproc, then destroys,
   creates, loads and starts the cell.
 - `rpmsg-test` then reports the state "detached" before and "attached"
@@ -2627,7 +2634,7 @@ the variable `ADB_T`.
 
 #### REL-01 The rpmsg sample
 
-**Purpose.** The rpmsg sample of the Genio Zephyr samples (`samples/rpmsg`)
+**Purpose.** The rpmsg sample of MediaTek Zephyr Samples (`samples/rpmsg`)
 is the documented way for Linux and a Zephyr cell to exchange messages:
 - Zephyr runs in `-zephyr-rpmsg`;
 - Linux attaches to the cell as a remote processor over the shared-memory
@@ -2641,33 +2648,49 @@ The test shows that the whole path works on the image: the driver
 1. Push the Zephyr image and `rpmsg-test`, and print their md5.
 2. Print the kernel options, the remoteprocs and the `/dev/rpmsg*` nodes.
    Find the ivshmem remoteproc by its name, `0001:00:00.0`.
-3. Create and start `-zephyr-rpmsg`. After 3 s, run `rpmsg-test -p <n>` for
-   20 s. Print the remoteproc state before, during and after, the device
+3. Create and start `-zephyr-rpmsg`. After 3 s, run `rpmsg-test -p <n>`
+   under `timeout` for 20 s, line-buffered, and print its return code and
+   output. Print the remoteproc state before, during and after, the device
    nodes and the modules.
 4. Detach the remoteproc, destroy the cell, and print the end of the
    hypervisor console. Count the messages from Linux on UART1.
 
-**Checks.** No coded verdict. The criteria (RITY move notes):
+**Checks.** No coded verdict. The criteria (RITY move notes, as corrected
+on 2026-10-26):
 - the remoteproc attaches;
-- 9 messages from Linux arrive;
-- `rpmsg-test` returns 0;
+- messages arrive both ways: 9 from Linux on UART1, and "Hello from
+  Zephyr!" lines in `rpmsg-test`'s output;
+- `rpmsg-test` returns 124: it runs until `timeout` stops it, and an error
+  ends it early with 1;
 - the remoteproc detaches, the cell is destroyed, and all CPUs are back.
 
-**Expected output.** The 700 on 2026-10-26, abridged:
+Before 2026-10-26, the script printed the return code of a bare `wait`,
+which is always 0, and `rpmsg-test`'s output was lost when it was stopped.
+The runs of board logs 158, 167, 178 and 186 therefore rest on the count
+of messages from Linux alone.
+
+**Expected output.** The 700 on 2026-10-26, with the script of that day,
+abridged:
 
 ```
 ivshmem remoteproc id: 1
-=== 11:20:07 Zephyr cell
+=== 13:41:45 Zephyr cell
 rc=0
-=== 11:20:10 rpmsg-test -p 1, 20s
+=== 13:41:48 rpmsg-test -p 1, 20s
 state before: detached
 state while running: attached
-crw------- 1 root root 507, 0 Jun 26 08:46 /dev/rpmsg0
-crw------- 1 root root 506, 0 Jun 26 08:46 /dev/rpmsg_ctrl0
+crw------- 1 root root 507, 0 Jun 26 11:07 /dev/rpmsg0
+crw------- 1 root root 506, 0 Jun 26 11:07 /dev/rpmsg_ctrl0
 [...]
-rpmsg-test rc=0
+rpmsg-test rc=124
+RPMSG-TEST using LINUX remoteproc attach ...
 [...]
-=== 11:20:37 detach and destroy zephyr-rpmsg
+[INFO]  send_message  Size: 21
+[INFO]  RPMSG RX  len: 22  msg: 'Hello from Zephyr!  1'
+[...]
+[INFO]  RPMSG RX  len: 22  msg: 'Hello from Zephyr!  9'
+[...]
+=== 13:42:14 detach and destroy zephyr-rpmsg
 state detached
 destroy rc=0
 0-7
@@ -2678,15 +2701,20 @@ Created cell "zephyr-rpmsg"
 [...]
 === UART1: 9 messages from Linux
 [...]
-[INFO]  Created endpoint for service 'rpmsg-raw'
 [INFO]  Endpoint for service 'rpmsg-raw' is connected
+[INFO]  RPMSG RX  len: 21  msg: 'Hello from Linux!  8'
+[INFO]  RPMSG RX  len: 21  msg: 'Hello from Linux!  9'
 ```
 
-**Last run.** As the criteria on both boards, 2026-10-26, refinement-1 image,
-as step 2 of IMG-03 (board logs 178 and 186). Also on 2026-10-22 on the heads
-image (board logs 158 and 167).
+**Last run.** As the criteria on the 700, 2026-10-26, refinement-1 image,
+with the script of that day (board logs 191 and 192): `rpmsg-test` returned
+124 both times; 9 messages from Linux both times, and 9 from Zephyr in log
+192, the first run with line-buffered output. Before, on both boards with
+the earlier script: 2026-10-26, as step 2 of IMG-03 (board logs 178 and
+186), and 2026-10-22 on the heads image (board logs 158 and 167).
 
-**Sources.** `rpmsg-sample.sh`; board log 186, board log 158.
+**Sources.** `rpmsg-sample.sh`; board log 192, board log 191, board log 186,
+board log 158.
 
 #### REL-02 The samples' cell launcher `genio-inmate.sh`
 
@@ -3447,7 +3475,9 @@ with UART1 connected:
 
 **Checks.**
 - **Coded:** `mtk_jh_rproc` is loaded after the enable; `rpmsg-test`
-  returns 0 and at least one message from Linux arrives.
+  returns 124 and at least one message from Linux arrives. Until
+  2026-10-26 the script checked for 0, the return code of a bare `wait`
+  (REL-01); the step then rested on the message count alone.
 - **Not coded** (the RITY move notes): before the enable, none of
   `jailhouse`, `mtk_jh_rproc`, `rpmsg_char` and `rpmsg_ctrl` is loaded; the
   rpmsg nodes are `crw------- root root`; no pciehp, with the port services
@@ -3488,7 +3518,10 @@ kernel warnings 0
 ```
 
 **Last run.** All pass on both boards, 2026-10-26, refinement-1 image (board
-logs 178 and 186).
+logs 178 and 186), with the script before the change of that day: the
+excerpt's `rpmsg-test rc=0` is the old, empty value. The script has not
+run since it expects 124; REL-01's script ran alone with it (board logs
+191 and 192).
 
 **Sources.** `refine-accept.sh`; board log 186, board log 178.
 
@@ -3595,8 +3628,8 @@ wic must be explained.
 | Rootfs manifest | identical (1711 packages), no jailhouse |
 
 **Last run.** Pass, 2026-10-21, `genio-510-evk`. The kernel hash difference
-is explained by HOST-02. The full comparison is in
-`identity-baseline-vs-featureoff-genio-510-evk.txt`.
+is explained by HOST-02. The integration record keeps the full
+comparison.
 
 **Sources.** Integration record, section 5.
 
@@ -3605,8 +3638,9 @@ is explained by HOST-02. The full comparison is in
 **Purpose.** HOST-01's kernel hashes differ. The test shows that the
 difference comes from the build itself, not from the series.
 
-**Procedure.** `stock-kernel-repro.sh`: build the stock kernel
-a second time from identical inputs (`bitbake -f -c compile linux-mtk`).
+**Procedure.** With a helper script of the integration record, build the
+stock kernel a second time from identical inputs
+(`bitbake -f -c compile linux-mtk`).
 Compare its image with the baseline's, and HOST-01's two kernels with each
 other.
 
@@ -3614,8 +3648,8 @@ other.
 feature-off build do: same `.config`, patches, banner and size, different
 bytes.
 
-**Expected output.** The record's table, from
-the record's output `repro-stock-kernel.txt`, abridged:
+**Expected output.** The record's table, from the helper script's output,
+abridged:
 
 | | baseline vs second stock build | baseline vs feature off |
 |---|---|---|
@@ -3644,8 +3678,8 @@ Nothing else may change.
 **Procedure.** Build `rity-bringup-image` with
 `DISTRO_FEATURES:append = " jailhouse"` for each machine. Check the patches,
 fragments, `.config` against feature off, version, hashes, overlay, packages,
-root file system, the revision `AUTOREV` resolved to, and U-Boot. The output
-is in `check-featureon-<machine>.txt`.
+root file system, the revision `AUTOREV` resolved to, and U-Boot. The record
+keeps the output for each machine.
 
 **Checks.**
 - 4 kernel patches: the 2 stock ones, the Jailhouse exports and the
@@ -3668,8 +3702,8 @@ is in `check-featureon-<machine>.txt`.
 
 **Last run.** Pass for both machines, 2026-10-21.
 
-**Sources.** Integration record, section 6;
-`check-featureon-genio-700-evk.txt`, `check-featureon-genio-510-evk.txt`.
+**Sources.** Integration record, section 6, and its check output for each
+machine.
 
 #### HOST-04 The guard: Jailhouse in the image without the feature
 
@@ -3707,8 +3741,8 @@ EXIT CODE: 1
 
 **Last run.** Pass, 2026-10-21 (case 1) and 2026-10-22 (case 2).
 
-**Sources.** Integration record, section 7; `guard-510.log`,
-`guard-1200-off.log`, `guard-1200-on.log`.
+**Sources.** Integration record, section 7, and the logs of the three
+parse-only runs.
 
 #### HOST-05 Feature on, on a machine without Jailhouse
 
@@ -3748,8 +3782,9 @@ feature off would still ship `jailhouse.dtbo` in its FIT. The fix removes the
 leftover; the test proves that it does, and that it changes nothing with
 the feature on.
 
-**Procedure.** `fixtest.sh`, in a separate build directory with
-its own `TMPDIR` and hash-equivalence database. `genio-510-evk` with the fix,
+**Procedure.** A helper script of the integration record, in a separate
+build directory with its own `TMPDIR` and hash-equivalence database.
+`genio-510-evk` with the fix,
 first with the feature on, then off. Compare the off build with the stock
 baseline, and the hash-equivalence records of the two builds.
 
@@ -3760,7 +3795,8 @@ baseline, and the hash-equivalence records of the two builds.
 - The two builds keep separate output hashes.
 - The on build is unchanged.
 
-**Expected output.** `fix-dtbo-workdir.txt`, abridged:
+**Expected output.** The helper script's record of the dtbo work directory,
+abridged:
 
 ```
 == after feature ON (2026-10-22 23:55:19)
@@ -3774,13 +3810,13 @@ DEBUG: Executing python function jailhouse_drop_stale_overlay
 DEBUG: Python function jailhouse_drop_stale_overlay finished
 ```
 
-The content comparison with the baseline is in
-the record's comparison `identity-baseline-vs-fix-off-genio-510-evk.txt`.
+The integration record keeps the content comparison with the baseline.
 
 **Last run.** Pass, 2026-10-22 23:13 to 2026-10-23 00:35. The fix is not part
 of the initial series.
 
-**Sources.** Integration record, sections 9.1 and 11; `fix-dtbo-workdir.txt`.
+**Sources.** Integration record, sections 9.1 and 11, and the helper
+script's record of the dtbo work directory.
 
 #### HOST-07 Hypervisor sources compile cleanly
 
@@ -3792,13 +3828,12 @@ more). A quick check is possible without a kernel tree.
 and assembler-offset headers in a temporary directory, removed at the end,
 then run `aarch64-linux-gnu-gcc -fsyntax-only` with the hypervisor's flags
 (or the inmates' with `-i`) on each file. This is a syntax and warning check,
-not a build. Since 2026-10-26 the output is also kept in
-a board log `hvcheck-<date>.log`.
+not a build. Since 2026-10-26 the output is also kept as a board log.
 
 **Checks.** Coded: `OK  <file>` per file. The exit status is non-zero if any
 file fails.
 
-**Expected output.** `hvcheck-20261026-132415.log`, paths shortened:
+**Expected output.** The board log of 2026-10-26, paths shortened:
 
 ```
 === Mon Oct 26 01:24:15 PM PDT 2026 mtk-v1.0.0-28-ge7fd8796 [...]/mtk-common-wdt.c [...]/mtk-mt8188-wdt.c
@@ -3811,7 +3846,7 @@ OK  [...]/hypervisor/arch/arm64/mtk-mt8188-wdt.c
 which cover all sources: every commit builds with and without
 `CONFIG_SOC=mt8188`, with 0 warnings.
 
-**Sources.** `hvcheck.sh`; the board log `hvcheck-20261026-132415.log`.
+**Sources.** `hvcheck.sh`; its board log of 2026-10-26.
 
 #### HOST-08 Cell configurations: build and `jailhouse-config-check`
 
@@ -3828,14 +3863,14 @@ a built hypervisor tree:
 2. Print their md5, and run `tools/jailhouse-config-check` on all of them
    together.
 
-The output is also kept in a board log `cellcheck-<board>-<build>-<date>.log`.
+The output is also kept as a board log.
 Until 2026-10-26 the script compiled one `.cell` per `.c` file, which no
 longer matches the cell tables.
 
 **Checks.** Coded: the checker's exit status is the script's (`rc=0`).
 
-**Expected output.** `cellcheck-700-e7fd8796-700-20261026-132406.log`,
-abridged, paths shortened:
+**Expected output.** The board log of 2026-10-26 for the 700, abridged,
+paths shortened:
 
 ```
 === Mon Oct 26 01:24:06 PM PDT 2026 mtk-v1.0.0-28-ge7fd8796, genio-700-evk
@@ -3860,8 +3895,7 @@ and the test cell `test-ok`. For the 510 the last record is the W1 milestone
 notes' gate of 2026-10-12: `jailhouse-config-check` (revision 16) clean for
 both boards.
 
-**Sources.** `cellcheck.sh`; the board log
-`cellcheck-700-e7fd8796-700-20261026-132406.log`.
+**Sources.** `cellcheck.sh`; its board log of 2026-10-26 for the 700.
 
 #### HOST-09 Zephyr build sets
 
@@ -3870,7 +3904,8 @@ every Genio target from one recorded tree, without warnings. The board
 results then apply to a known set of images.
 
 **Procedure.** `twister` builds (`--build-only`) of the rel-1.1 tree
-(mtk-zephyr `2e9e70f0a16`, samples `b962ff3`, SDK 1.0.1):
+(MediaTek Zephyr `2e9e70f0a16`, MediaTek Zephyr Samples `b962ff3`,
+SDK 1.0.1):
 - `twister-samples`: all samples, `hello_world`, the rpmsg sample and the
   expiry sample, for both A55 targets;
 - `twister-all`: the samples, `hello_world`, `gpio_basic_api`, the SMP tests,
@@ -3960,6 +3995,8 @@ proposes coded criteria for several of them.
   - REL-10's case T5 has not run with `hwinfo_api` as the restart image.
   - `b5-permissions.sh` has not run in its board mode (IMG-04).
   - W1-TWO, W1-M3-T18 and REL-03 to REL-05 ran again on the 700 only.
+  - REL-01's fixed return code ran on the 700 only (board logs 191 and
+    192); IMG-03 has not run since it expects 124.
   - The regression's new captures (R-21, R-45, R-46) await its next run
     (Section 7.3).
 - **`rity-precheck.sh` (IMG-01).** It stops only on the image name, the dry
@@ -3996,9 +4033,10 @@ followed, as the script-fix record lists them.
 | REL-09 | `pcie-test.sh`'s header states that the rebind does not reach `SWSYSRST` on this BSP | – |
 | REL-10 | `sr2-test.sh`'s case T5 needs a restart image other than the warm-reboot application, names it, and keeps the daemon's configuration. The header records what log 136 showed | Not run since |
 | REL-11, REL-12 and the regression's test cells | `pcie-test.sh`, `sr2-test.sh` and `fixes2-test.sh` take the adb transport from `ADB_T`, and read `poll-state.py`, the test tools and the REL-12 test cells from the workspace, not from a temporary directory. The sources of the test cells are recovered; their `build.sh` rebuilds all eight cells byte for byte | The script-fix record |
-| HOST-07 | `hvcheck.sh` keeps its generated headers in a temporary directory, and its output as a board log | `hvcheck-20261026-132415.log` |
-| HOST-08 | `cellcheck.sh` rewritten for the per-board cell tables | `cellcheck-700-e7fd8796-700-20261026-132406.log` |
+| HOST-07 | `hvcheck.sh` keeps its generated headers in a temporary directory, and its output as a board log | Its board log of 2026-10-26 |
+| HOST-08 | `cellcheck.sh` rewritten for the per-board cell tables | Its board log of 2026-10-26 (700) |
 | IMG-04 | `b5-permissions.sh`, the commands of board log 174 as a script | Board mode not run since |
+| REL-01, IMG-03 | `rpmsg-sample.sh` waits for `rpmsg-test` by its process ID and prints its return code, 124 after the timeout, and runs it line-buffered, so its output is kept. `refine-accept.sh` passes the rpmsg step on 124 and at least one message from Linux | Board logs 191 and 192 (REL-01); `refine-accept.sh` not run since |
 | R-21, R-42, R-45, R-46 | `regression.sh` keeps the unfiltered UART output (`<name>.raw`), prints the refusal messages as the detail of R-45 and R-46, and R-42's comment is corrected | Next regression run |
 
 ## 8. Appendix: proposed coded criteria
@@ -4040,11 +4078,11 @@ coded-criteria proposal (Section 1.5).
 | W1-Z-WDTBASIC | Second boot: `SUITE PASS` and `PROJECT EXECUTION SUCCESSFUL` |
 | W1-Z-WDTERR | 16 passed, 7 skipped, and `PROJECT EXECUTION SUCCESSFUL` |
 | W1-TWO | Case 1: `-zephyr` `failed` 2.5 to 4 s after the start, with "watchdog timeout", and `wdt-b` `running` 20 s later. Case 2: `wdt-b` `failed` with "watchdog timeout", **no failed CPU and no `Unhandled` line** after its start, and `-zephyr` `running`. The last two checks would have caught the error of 2026-10-22 |
-| W1-D0 | Per cell type: "restarting", then "restarted" within 0.5 s; `s40000000` from probe 6; for `-zephyr-rpmsg`, "detached" between them. The proposal places "detached" before "restarting"; in the logs it follows "restarting" (W1-D0, W1-D4) |
+| W1-D0 | Per cell type: "restarting", then "restarted" within 0.5 s; `s40000000` from probe 6; for `-zephyr-rpmsg`, "remoteproc 0001:00:00.0: detached" between them, as in the logs (W1-D0, W1-D4) |
 | W1-D1 | Restarts 1, 3, 7 and 15 s (±0.5 s) after failures 2 to 5; the sixth failure logs "failed 5 times within 300 s", and no restart follows |
 | W1-D2 | 10 "restarted" lines, 3.8 to 4.5 s apart; the pool counters equal before and after; `online` equals `possible` |
 | W1-D3 | Restarted; `s00000000` |
-| W1-D4 | "Hello from Zephyr!" in both `rpmsg-test` runs; the state "detached" before and "attached" after the restart. The proposal also names `rpmsg-test`'s return code 0; the script stops `rpmsg-test` after 8 s, so it returns 124 (W1-D4), and the call or the criterion must change |
+| W1-D4 | In both runs: `rpmsg-test rc=124`, at least two "Hello from Zephyr!" lines, `state before: detached` and `state after: attached`. In the journal, "detached" between "restarting" and "restarted", as in W1-D0. 124 is the pass value: `timeout -s INT 8` stops `rpmsg-test`, which has no signal handler; an error ends it early with 1 |
 | W1-D5, W1-D6 | `CAUSE 0x8` first, `PSCI_FEATURES ... = 0` twice; "system reset requested"; "restarted" in the journal; then `hwinfo_api`'s `PROJECT EXECUTION SUCCESSFUL` |
 | The whole run | 0 kernel warnings. The hypervisor log has exactly two `Unhandled`/`FATAL` pairs, both "Unhandled data read at 0x10000000" (W1-M3-T17 and W1-D3); any other address fails the run. On 2026-10-22, the third pair, at `0x11001214`, was W1-TWO's fault |
 
@@ -4106,3 +4144,4 @@ TEST-INDEX
 | 1.0 | 2026-10-26 | First issue, for review |
 | 1.1 | 2026-10-26 | Re-runs of W1-TWO, W1-M3-T18 and REL-03 to REL-05 (board logs 188 to 190) and the script changes of 2026-10-26 in the entries and Chapter 7; the reset cause in W1-D5/D6 and REL-10; Chapter 8, proposed coded criteria |
 | 1.1.1 | 2026-10-26 | Public copy: the sources are cited by board log number and file name, without the paths of the internal workspace. No test, check or result changed |
+| 1.2 | 2026-11-02 | The return code of `rpmsg-test`, 124 after the timeout: REL-01 with board logs 191 and 192, IMG-03, W1-D4, Sections 7.2 and 7.4; Chapter 8's W1-D0 and W1-D4 criteria as corrected. Helper scripts, record outputs and check logs are described instead of named (HOST-01 to HOST-04, HOST-06 to HOST-08, Section 7.4). A note on the version strings in the expected outputs (Section 1.4), the hypervisor of the runs described as the v26.1 line, and the Zephyr software named MediaTek Zephyr and MediaTek Zephyr Samples (Section 1.3) |
