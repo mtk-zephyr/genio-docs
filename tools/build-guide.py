@@ -33,7 +33,7 @@ def figure_workflow():
 	steps = [
 		("Build Linux", ["IoT Yocto with", "the jailhouse feature"], "Chapter 3"),
 		("Flash the board", ["genio-flash with the", "Jailhouse overlay"], "Chapter 4"),
-		("Build Zephyr", ["west workspace and", "the Genio samples"], "Chapter 5"),
+		("Build Zephyr", ["west workspace and", "MediaTek Zephyr Samples"], "Chapter 5"),
 		("Run under Jailhouse", ["enable, create a cell,", "load and start Zephyr"], "Chapter 6"),
 	]
 	w, gap, h = 142, 24, 112

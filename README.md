@@ -9,8 +9,8 @@ the Jailhouse partitioning hypervisor.
 
 **Running Zephyr alongside Linux with Jailhouse on Genio 510 and Genio 700 EVKs**
 
-How to build an IoT Yocto image with Jailhouse, flash it, build Zephyr and the
-Genio samples, and run Zephyr in a Jailhouse cell: on a Cortex-A55, a
+How to build an IoT Yocto image with Jailhouse, flash it, build Zephyr and
+MediaTek Zephyr Samples, and run Zephyr in a Jailhouse cell: on a Cortex-A55, a
 Cortex-A78, two cores, or with the audio front end.
 
 - **PDF, latest release:** [genio-jailhouse-zephyr-guide.pdf](https://github.com/mtk-zephyr/genio-docs/releases/latest/download/genio-jailhouse-zephyr-guide.pdf)
@@ -55,7 +55,7 @@ Copyright (c) 2026 MediaTek Inc.
 
 ## Related
 
-- [Genio Zephyr tree](https://github.com/mtk-zephyr/mtk-zephyr)
-- [Genio Zephyr samples](https://github.com/mtk-zephyr/samples)
+- [MediaTek Zephyr](https://github.com/mtk-zephyr/mtk-zephyr)
+- [MediaTek Zephyr Samples](https://github.com/mtk-zephyr/samples)
 - [MediaTek Jailhouse](https://github.com/mtk-jailhouse/jailhouse)
 - [IoT Yocto documentation](https://genio.mediatek.com/doc/iot-yocto/latest/sw/yocto/get-started.html)

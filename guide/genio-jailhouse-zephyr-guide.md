@@ -6,7 +6,7 @@
 |---|---|
 | Document status | Draft for v26.1 |
 | Applies to | Genio 510 EVK (MT8370), Genio 700 EVK (MT8390) |
-| Software | IoT Yocto v26.1 (`rity-scarthgap-v26.1`) with the `jailhouse` feature; MediaTek Jailhouse `v26.1`; MediaTek Genio Zephyr `v26.1` (Zephyr 4.5.0) with Zephyr SDK 1.0.1 |
+| Software | IoT Yocto v26.1 (`rity-scarthgap-v26.1`) with the `jailhouse` feature; MediaTek Jailhouse `v26.1`; MediaTek Zephyr and MediaTek Zephyr Samples `v26.1` (Zephyr 4.5.0) with Zephyr SDK 1.0.1 |
 | License | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
 | Last updated | 2026-10-28 |
 
@@ -20,7 +20,7 @@
 4. [Flashing the board](#4-flashing-the-board)
 5. [Building Zephyr applications](#5-building-zephyr-applications)
 6. [Running Zephyr under Jailhouse](#6-running-zephyr-under-jailhouse)
-7. [Running the Genio Zephyr samples](#7-running-the-genio-zephyr-samples)
+7. [Running the MediaTek Zephyr Samples](#7-running-the-mediatek-zephyr-samples)
 8. [A watchdog for the cells](#8-a-watchdog-for-the-cells)
 9. [Troubleshooting](#9-troubleshooting)
 10. [Reference](#10-reference)
@@ -42,7 +42,7 @@ It covers the complete workflow on your own Linux workstation:
 - building an IoT Yocto image that includes Jailhouse, with the `jailhouse`
   feature of IoT Yocto;
 - flashing the image with the Jailhouse device-tree overlay;
-- building Zephyr applications and the Genio Zephyr samples;
+- building Zephyr applications and MediaTek Zephyr Samples;
 - enabling Jailhouse, running Zephyr in a cell, and watching its console;
 - running Zephyr on a Cortex-A78 core, on two Cortex-A55 cores (SMP), with
   the audio front end (AFE), and with RPMsg to Linux;
@@ -134,17 +134,18 @@ Cortex-A55 cores (see [Section 6.4](#64-choosing-a-cell)).
 | IoT Yocto BSP v26.1 | `https://gitlab.com/mediatek/aiot/bsp/manifest.git`, tag `rity-scarthgap-v26.1` | Yocto Project 5.0 (Scarthgap), Linux 6.6 |
 | `meta-mediatek-bsp` and `meta-rity` | Part of the BSP manifest | With the `jailhouse` distribution feature: the `jailhouse` recipe (MediaTek Jailhouse), the Jailhouse kernel support and the device-tree overlay `jailhouse.dtbo` (`meta-mediatek-bsp`), and Jailhouse in `rity-bringup-image` (`meta-rity`) |
 | MediaTek Jailhouse | `https://github.com/mtk-jailhouse/jailhouse`, release tag `v26.1` on the branch `scarthgap` | Built by the `jailhouse` recipe from the release tag; you do not need to fetch it yourself |
-| Genio Zephyr tree | `https://github.com/mtk-zephyr/mtk-zephyr`, tag `v26.1` on the branch `mtk-v4.5.0` | Zephyr 4.5.0 with the Genio board support |
-| Genio Zephyr samples | `https://github.com/mtk-zephyr/samples`, tag `v26.1` on the branch `mtk-v4.5.0` | West manifest repository; fetches the Zephyr tree at its tag `v26.1`, and its modules |
+| MediaTek Zephyr | `https://github.com/mtk-zephyr/mtk-zephyr`, tag `v26.1` on the branch `mtk-v4.5.0` | Zephyr 4.5.0 with the Genio board support |
+| MediaTek Zephyr Samples | `https://github.com/mtk-zephyr/samples`, tag `v26.1` on the branch `mtk-v4.5.0` | West manifest repository; fetches MediaTek Zephyr at its tag `v26.1`, and its modules |
 | Zephyr SDK | Installed with `west sdk install` | Version 1.0.1, as set in the tree's `SDK_VERSION` file; only the `aarch64-zephyr-elf` toolchain is needed |
 
-The Genio Zephyr tree has a branch for each Zephyr release it is based on:
-`mtk-v4.5.0` for Zephyr 4.5.0 and `mtk-v4.4.2` for Zephyr 4.4.2.
-Development continues on `mtk-v4.5.0-next`. The samples have the same
-branches. A branch moves on; this guide uses the tags `v26.1`, which do not.
+MediaTek Zephyr, the Genio Zephyr tree, has a branch for each Zephyr release
+it is based on: `mtk-v4.5.0` for Zephyr 4.5.0 and `mtk-v4.4.2` for
+Zephyr 4.4.2. Development continues on `mtk-v4.5.0-next`. MediaTek Zephyr
+Samples has the same branches. A branch moves on; this guide uses the tags
+`v26.1`, which do not.
 
-In the history of the tree, the subjects of the Genio commits start with
-`GENIO:`, and those of fixes backported from later Zephyr releases with
+In the history of MediaTek Zephyr, the subjects of the Genio commits start
+with `GENIO:`, and those of fixes backported from later Zephyr releases with
 `BACKPORT:`. At `v26.1`, the tree has **[TBD: count]** Genio commits on
 Zephyr 4.5.0, and no backports.
 
@@ -155,7 +156,7 @@ Zephyr 4.5.0, and no backports.
 writing, MediaTek verifies builds on Ubuntu 22.04 LTS and asks for at least
 400 GiB of free disk space and 64 GiB of RAM for a 16-core system.
 
-**Zephyr builds.** The Genio Zephyr tree is Zephyr 4.5.0, which needs at
+**Zephyr builds.** MediaTek Zephyr is based on Zephyr 4.5.0, which needs at
 least CMake 3.28, Python 3.12 and the devicetree compiler 1.4.6 (see the
 [Zephyr Getting Started Guide][zephyr-gsg]). Ubuntu 24.04 LTS provides these
 versions; on Ubuntu 22.04, install newer CMake and Python first. Zephyr builds
@@ -535,9 +536,9 @@ dtc --version
 
 ### 5.2 Creating the workspace
 
-The Genio samples repository is the west manifest of the workspace. One
-`west init` and `west update` fetch the Genio Zephyr tree, the modules it
-needs and the samples, at the tags `v26.1` of the samples and the tree
+MediaTek Zephyr Samples is the west manifest repository of the workspace.
+One `west init` and `west update` fetch MediaTek Zephyr, the modules it needs
+and the samples, at the tags `v26.1` of both
 (see [Section 2.2](#22-software-components)).
 
 1. Create the workspace directory and a Python virtual environment, and
@@ -582,9 +583,9 @@ The workspace now contains:
 ```
 ~/genio-zephyr/
 ├── .venv/       Python virtual environment
-├── zephyr/      Genio Zephyr tree
+├── zephyr/      MediaTek Zephyr
 ├── modules/     HALs and modules
-└── samples/     Genio samples (manifest repository)
+└── samples/     MediaTek Zephyr Samples (manifest repository)
 ```
 
 ### 5.3 Installing the Zephyr SDK
@@ -630,9 +631,9 @@ For the Genio 700 EVK, use `-b mt8390_genio_700_evk/mt8188/a55`.
 
 The image to run is `build/hello_world/zephyr/zephyr.bin`.
 
-### 5.6 Building the Genio samples
+### 5.6 Building the MediaTek Zephyr Samples
 
-The Genio samples are in `samples/` (see [Section 7](#7-running-the-genio-zephyr-samples)).
+The samples are in `samples/` (see [Section 7](#7-running-the-mediatek-zephyr-samples)).
 Build one with `west build`, for example the GPIO loopback:
 
 **Host**
@@ -734,7 +735,7 @@ hypervisor prints its messages there too, and to its own console buffer
 > **Caution:** Linux has a driver for UART1, `/dev/ttyS1` on the board. Do
 > not open `ttyS1` from Linux, for example with `stty`, `echo` or a login
 > prompt: Linux then leaves UART1 with its DMA and high-speed mode set until
-> the next boot. Zephyr images built from the Genio Zephyr tree of this guide
+> the next boot. Zephyr images built from MediaTek Zephyr `v26.1`
 > (see [Section 2.2](#22-software-components)) reset UART1's state when they
 > start, so a Zephyr cell still works. Older Zephyr images then
 > receive nothing on UART1, and other inmates such as `uart-demo` print
@@ -845,7 +846,7 @@ At the release tag, the first line reads `v26.1 (0-g[TBD: commit])` (see
    While the cell exists, Linux does not use its CPU:
    `cat /sys/devices/system/cpu/online` prints `0-2,4-5` on the Genio 510 EVK.
 
-**Helper script.** The samples repository contains
+**Helper script.** MediaTek Zephyr Samples contains
 `samples/tools/genio-inmate.sh`, which runs on the board. It loads the driver,
 enables Jailhouse if needed, replaces any existing Zephyr cell, and then
 creates, loads and starts the cell; it reads the cell's name from the cell
@@ -927,7 +928,7 @@ exists, Linux can neither change nor throttle the A78 clock.
 
 ### 6.5 Running Zephyr on two cores (SMP)
 
-Build the image for the SMP target (see [Section 5.6](#56-building-the-genio-samples))
+Build the image for the SMP target (see [Section 5.6](#56-building-the-mediatek-zephyr-samples))
 and run it in the `-zephyr-smp` cell:
 
 **Board**
@@ -1104,11 +1105,11 @@ Set the console back to 115200 baud before you run Zephyr again.
 
 ---
 
-## 7. Running the Genio Zephyr samples
+## 7. Running the MediaTek Zephyr Samples
 
-The `samples/` repository contains applications that test the Genio Zephyr
-drivers and print their own verdict. Each sample has a README with its exact
-expected output.
+The `samples/` repository contains applications that test the drivers of
+MediaTek Zephyr and print their own verdict. Each sample has a README with its
+exact expected output.
 
 | Sample | Checks | Needs |
 |---|---|---|
@@ -1152,7 +1153,7 @@ The audio samples use the audio front end (AFE) and the eTDM ports. They need
 all of the following. Most of these prerequisites fail silently when they are
 missing: the driver still reports success, but no audio moves.
 
-1. **Build with the `mtk-afe` snippet** (see [Section 5.6](#56-building-the-genio-samples)).
+1. **Build with the `mtk-afe` snippet** (see [Section 5.6](#56-building-the-mediatek-zephyr-samples)).
 2. **Use an AFE cell**, for example `genio-<board>-evk-zephyr-afe.cell`. The
    ordinary Zephyr cells do not grant the AFE; under them, the cell fails at
    the first AFE access. The AFE cells also own the eTDM pins, so the Zephyr
@@ -1204,7 +1205,8 @@ signals the other through the device's interrupt (see
 `mtk-jh-rproc` driver binds to the device as a remote processor. It handles
 only the messages: Jailhouse, not the driver, loads and starts Zephyr.
 
-The RPMsg sample of the Genio samples, `samples/rpmsg`, shows the connection.
+The RPMsg sample of MediaTek Zephyr Samples, `samples/rpmsg`, shows the
+connection.
 It has two parts:
 
 - a Zephyr application, `samples/rpmsg/zephyr`: the RPMsg remote. It uses OpenAMP
@@ -1219,7 +1221,7 @@ devices, as modules that load by themselves: the driver when Jailhouse is
 enabled, the character devices when the RPMsg channel comes up.
 
 1. **Build the Zephyr application** in the Zephyr workspace (see
-   [Section 5.6](#56-building-the-genio-samples)):
+   [Section 5.6](#56-building-the-mediatek-zephyr-samples)):
 
    **Host**
 
@@ -1651,7 +1653,7 @@ On both EVKs, with the cells of this release:
 | The cell state is `failed` | The cell accessed memory or a device that it does not own, or the image does not fit into its memory; or its watchdog expired, or it asked for a reset | Read `jailhouse console`: an `Unhandled data read`/`write` message names the address, and a `WDT:` message names a watchdog expiry (see [Chapter 8](#8-a-watchdog-for-the-cells)). Check that the image was built for the right board target, uses only the granted devices, and fits into 8 MiB (`system/memory_window`); use an AFE cell for audio images |
 | No output on UART1, cell `running` | Wrong serial device or baud rate; another program reads the port; the image was loaded without `-a 0x8000`; the image was built for another board; an SMP image runs in a cell on other CPUs, such as `-zephyr-a78` | Check the device and 115200 baud; run `fuser /dev/ttyUSB<n>` on the host; reload with `-a 0x8000`; rebuild for the right board target; run SMP images only in the `-smp` cells (see [Section 6.5](#65-running-zephyr-on-two-cores-smp)) |
 | UART1 shows `Failed to boot secondary CPU core 1 (MPID:0x200)` and a kernel panic; the cell stays `running` | An SMP image runs in a one-core cell, such as `-zephyr`: the hypervisor refuses to start CPU 2, which the cell does not own | Use the `-zephyr-smp` or `-zephyr-afe-smp` cell, or build the image for the single-core target (see [Section 6.5](#65-running-zephyr-on-two-cores-smp)) |
-| A Zephyr image built from an older Genio Zephyr tree receives nothing on UART1 | `/dev/ttyS1` was opened on Linux, which left UART1 with DMA set until the next boot | Reboot the board, and do not open `ttyS1`; or use an image built from the tree of this guide, which resets UART1 (see [Section 6.1](#61-opening-the-zephyr-console-uart1)) |
+| A Zephyr image built from an older release of MediaTek Zephyr receives nothing on UART1 | `/dev/ttyS1` was opened on Linux, which left UART1 with DMA set until the next boot | Reboot the board, and do not open `ttyS1`; or use an image built from MediaTek Zephyr `v26.1`, which resets UART1 (see [Section 6.1](#61-opening-the-zephyr-console-uart1)) |
 | The hypervisor console shows `WDT: no tick from the root cell for <n> ms` | The Jailhouse driver's tick stopped, for example with `tick_ms=0`; the cells' watchdogs are not checked meanwhile | Set `tick_ms` back to 100 (see [Section 8.5](#85-operating-rules)); `WDT: ticks from the root cell resumed` follows |
 | `uart-demo` prints unreadable characters or nothing | A Zephyr cell ran before and left UART1's high-speed register set, and its reset was skipped or did not take: the reset works only while UART1's clock is on, after a Zephyr run and before Linux uses `ttyS1`; or the terminal is not at 38400 baud | Run a Zephyr cell once, then `devmem2 0x11001224 w 0` with no cell running on UART1; set the terminal to 38400 baud; if `ttyS1` was opened, reboot first (see [Section 6.10](#610-optional-checking-a-cell-with-the-uart-demo-inmate)) |
 | After a new `-zephyr-rpmsg` cell, Zephyr stays at `Awaiting VIRTIO config ready`, and Linux logs `msg received with no recipient` | The previous cell was destroyed while Linux was attached, so the remote processor is still `attached` | Write `detach` to `/sys/class/remoteproc/remoteproc<n>/state` until it reads `detached`, then run `rpmsg-test` again (see [Section 7.4](#74-rpmsg-with-linux)) |
@@ -1757,7 +1759,7 @@ cell and names the entry. The build checks the CPUs, pins and interrupts;
 `jailhouse config check` checks the cells against each other and against the
 root cell (see the repository's `CONTRIBUTING.md`). The CPUs of the `-smp` cells must be the cores that the
 Zephyr SMP board variants enable, in `boards/mediatek/common/genio-evk-smp.dtsi`
-of the Genio Zephyr tree.
+of MediaTek Zephyr.
 
 ### 10.4 CPU and MPIDR map
 
@@ -1863,8 +1865,8 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 | IoT Yocto: Board connection | <https://genio.mediatek.com/doc/iot-yocto/latest/sw/yocto/get-started/connect.html> |
 | IoT Yocto: Flash Image to Board | <https://genio.mediatek.com/doc/iot-yocto/latest/sw/yocto/get-started/flash.html> |
 | Zephyr Getting Started Guide | <https://docs.zephyrproject.org/latest/develop/getting_started/index.html> |
-| Genio Zephyr samples, with the hardware setup in `doc/hardware.md` and the audio prerequisites in `audio/README.md` | <https://github.com/mtk-zephyr/samples> |
-| Genio Zephyr tree | <https://github.com/mtk-zephyr/mtk-zephyr> |
+| MediaTek Zephyr Samples, with the hardware setup in `doc/hardware.md` and the audio prerequisites in `audio/README.md` | <https://github.com/mtk-zephyr/samples> |
+| MediaTek Zephyr | <https://github.com/mtk-zephyr/mtk-zephyr> |
 | MediaTek Jailhouse | <https://github.com/mtk-jailhouse/jailhouse> |
 | MediaTek Jailhouse `v26.1` release notes | <https://github.com/mtk-jailhouse/jailhouse/blob/scarthgap/Documentation/v26.1-release-notes.md> |
 | Restarting failed cells (`cell-restart.md`) | <https://github.com/mtk-jailhouse/jailhouse/blob/scarthgap/Documentation/cell-restart.md> |
@@ -1889,4 +1891,4 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 | 0.9 | 2026-10-04 | Initial draft for review |
 | 0.9.1 | 2026-10-08 | UART0 named by its board label only. Linux sets the clocks of both CPU clusters; use the `performance` governor for measurements (Sections 6.4, 6.6, 9.7). How an SMP image fails in a cell other than an SMP cell (Section 6.5). Two new troubleshooting entries. The hypervisor of mtk-v1.0: its start-up messages (Section 6.2), and pin configuration registers that stay with Linux (Sections 9.3, 9.7). Section numbers as in revision 0.9.1. |
 | 1.0 | 2026-10-08 | First release, for MediaTek Jailhouse `mtk-v1.0.0` and Genio Zephyr `mtk-genio-v1.0.0`. RPMsg with Linux (Section 7.4). The layer's `jailhouse` recipe builds the release branch `mtk-v1.0` and installs the cells of one board (Sections 2.2, 3.3, 4.4, 9.2). The Zephyr workspace is created at the release tag (Section 5.2). Known limitations in step with the release notes (Section 9.7). Two new troubleshooting entries. Section numbers as in revision 1.0. |
-| 26.1 | **[TBD: release date]** | Release for MediaTek Jailhouse `v26.1` (developed as 1.1, which has no release of its own) with IoT Yocto v26.1, and the Genio Zephyr tree and samples at their tags `v26.1`, on Zephyr 4.5.0 (Sections 2.2, 2.3, 5.2). Jailhouse is built with the `jailhouse` feature of IoT Yocto v26.1 and its overlay `jailhouse.dtbo` (Chapters 3, 4 and 9). The version that the driver and the hypervisor report (Section 4.4). A watchdog for each Zephyr cell, and the cell restart daemon (Chapter 8; the former Chapters 8-10 are now 9-11). Each cell is named after its file (Sections 6.3-6.5, 7.4, 10.2, 10.6). Configuration format revision 16; the AFE cells no longer map the reset block (Sections 10.2, 10.3). The UART1 rules (Sections 6.1, 6.10). Limitations in step with the release notes (Section 10.7). The clock of a cell that takes both Cortex-A78 cores (Section 6.4), cacheable audio buffers (Section 7.3), and what more cores in a cell do and do not speed up (Section 10.7). Single-core images receive their device interrupts in a two-core cell too: Zephyr routes each one to the CPU that enables it (Section 5.4). |
+| 26.1 | **[TBD: release date]** | Release for MediaTek Jailhouse `v26.1` (developed as 1.1, which has no release of its own) with IoT Yocto v26.1, and MediaTek Zephyr and MediaTek Zephyr Samples at their tags `v26.1`, on Zephyr 4.5.0 (Sections 2.2, 2.3, 5.2). Jailhouse is built with the `jailhouse` feature of IoT Yocto v26.1 and its overlay `jailhouse.dtbo` (Chapters 3, 4 and 9). The version that the driver and the hypervisor report (Section 4.4). A watchdog for each Zephyr cell, and the cell restart daemon (Chapter 8; the former Chapters 8-10 are now 9-11). Each cell is named after its file (Sections 6.3-6.5, 7.4, 10.2, 10.6). Configuration format revision 16; the AFE cells no longer map the reset block (Sections 10.2, 10.3). The UART1 rules (Sections 6.1, 6.10). Limitations in step with the release notes (Section 10.7). The clock of a cell that takes both Cortex-A78 cores (Section 6.4), cacheable audio buffers (Section 7.3), and what more cores in a cell do and do not speed up (Section 10.7). Single-core images receive their device interrupts in a two-core cell too: Zephyr routes each one to the CPU that enables it (Section 5.4). |
