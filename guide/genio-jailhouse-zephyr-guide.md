@@ -252,9 +252,10 @@ contains nothing of Jailhouse, and the image is the stock IoT Yocto image.
 IoT Yocto v26.0 (`rity-scarthgap-v26.0`) has no Jailhouse feature. With
 v26.0, Jailhouse comes from the `meta-mediatek-experimental` layer and the
 line `IMAGE_INSTALL:append = " jailhouse"` instead of the feature line. That
-layer builds MediaTek Jailhouse 1.0 (`mtk-v1.0.0`), not v26.1: it has no
-watchdog for the cells, and its cells are named `zephyr`. Revision 1.0 of
-this guide describes it. The layer is added with:
+layer builds an earlier release of MediaTek Jailhouse, not v26.1 (the tag
+`v26.1` on the branch `scarthgap`): it has no watchdog for the cells, and
+its cells are named `zephyr`. Revision 1.0 of this guide describes it. The
+layer is added with:
 
 **Host**
 
@@ -499,12 +500,10 @@ The following checks run on the board.
    [Section 10.2](#102-cells)).
 
    > **Note:** The driver and the hypervisor's start-up line report the same
-   > version. A build at the release tag reports `v26.1 (0-g<commit>)`, and a
-   > build at a release-candidate tag `v26.1-rc<N> (0-g<commit>)`: builds of
-   > the pre-release `v26.1-rc1` report `v26.1-rc1 (0-g2c8e5f75)`. Builds of
+   > version. A build at the release tag reports `v26.1 (0-g<commit>)`, with
+   > the commit that the tag names: `v26.1 (0-g[TBD: commit])`. Builds of
    > later commits of the branch `scarthgap` report the last tag and the
-   > number of commits since it, for example `v26.1 (<n>-g<commit>)`, and
-   > builds of commits before the first `v26.1` tag report `26.1 (<commit>)`.
+   > number of commits since it, for example `v26.1 (<n>-g<commit>)`.
    > `jailhouse --version` prints only the version number of the source
    > tree, `Jailhouse management tool 26.1`.
 
@@ -788,8 +787,8 @@ Initializing unit: mt8188_wdt
 Activating hypervisor
 ```
 
-With a release candidate, the first line names it, for example
-`v26.1-rc1 (0-g2c8e5f75)` (see [Section 4.4](#44-verifying-the-image-on-the-board)).
+At the release tag, the first line reads `v26.1 (0-g[TBD: commit])` (see
+[Section 4.4](#44-verifying-the-image-on-the-board)).
 
 > **Note:** Enable Jailhouse once after each boot. `jailhouse cell list`
 > prints nothing, and succeeds, when Jailhouse is not enabled.
