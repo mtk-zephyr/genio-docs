@@ -146,7 +146,7 @@ Samples has the same branches. A branch moves on; this guide uses the tags
 
 In the history of MediaTek Zephyr, the subjects of the Genio commits start
 with `GENIO:`, and those of fixes backported from later Zephyr releases with
-`BACKPORT:`. At `v26.1`, the tree has **[TBD: count]** Genio commits on
+`BACKPORT:`. At `v26.1`, the tree has 32 Genio commits on
 Zephyr 4.5.0, and no backports.
 
 ### 2.3 Host computer
@@ -502,7 +502,7 @@ The following checks run on the board.
 
    > **Note:** The driver and the hypervisor's start-up line report the same
    > version. A build at the release tag reports `v26.1 (0-g<commit>)`, with
-   > the commit that the tag names: `v26.1 (0-g[TBD: commit])`. Builds of
+   > the commit that the tag names: `v26.1 (0-g160aa377)`. Builds of
    > later commits of the branch `scarthgap` report the last tag and the
    > number of commits since it, for example `v26.1 (<n>-g<commit>)`.
    > `jailhouse --version` prints only the version number of the source
@@ -790,7 +790,7 @@ Initializing unit: mt8188_wdt
 Activating hypervisor
 ```
 
-At the release tag, the first line reads `v26.1 (0-g[TBD: commit])` (see
+At the release tag, the first line reads `v26.1 (0-g160aa377)` (see
 [Section 4.4](#44-verifying-the-image-on-the-board)).
 
 > **Note:** Enable Jailhouse once after each boot. `jailhouse cell list`
