@@ -293,7 +293,7 @@ turns on everything Jailhouse needs, for these two machines only:
 
 | What | Effect |
 |---|---|
-| `jailhouse` package | The hypervisor firmware, the Jailhouse kernel module (`jailhouse.ko`), the `jailhouse` command-line tool, the nine cell configurations of the board you build for (`MACHINE`), the demo inmates, and the cell restart daemon with its systemd unit (see [Section 8.4](#84-restarting-failed-cells)). It is installed in `rity-bringup-image` and the images based on it. |
+| `jailhouse` package | The hypervisor firmware, the Jailhouse kernel module (`jailhouse.ko`), the `jailhouse` command-line tool, the eleven cell configurations of the board you build for (`MACHINE`), the demo inmates, and the cell restart daemon with its systemd unit (see [Section 8.4](#84-restarting-failed-cells)). It is installed in `rity-bringup-image` and the images based on it. |
 | Linux kernel patches and configuration | Kernel symbol exports for the Jailhouse driver; the kernel stays at EL1 (no VHE) so that Jailhouse can take over EL2; the `mtk-jh-rproc` remote processor driver, a module that loads when Jailhouse is enabled, and RPMsg support (see [Section 7.4](#74-rpmsg-with-linux)); virtual PCI support |
 | Device-tree overlay `jailhouse.dtbo` | Removes the hypervisor and inmate memory from Linux. It is built with the image but must be selected when you flash (see [Section 4.3](#43-flashing-with-the-jailhouse-overlay)) |
 
@@ -497,7 +497,7 @@ The following checks run on the board.
 
    The first command prints the path of `jailhouse.ko` below
    `/lib/modules/$(uname -r)/`, the second the release, `v26.1 (0-g<commit>)`,
-   and the third lists the nine cells of your board (see
+   and the third lists the eleven cells of your board (see
    [Section 10.2](#102-cells)).
 
    > **Note:** The driver and the hypervisor's start-up line report the same
@@ -613,9 +613,11 @@ By default, the SDK is installed in your home directory. Run
 
 - The **single-core** targets build images for one CPU. The same image runs
   on the default Cortex-A55 cell and on the Cortex-A78 cell.
-- The **SMP** targets build images for the two-core cells (CPU 2 and 3). A
-  single-core image also runs in a two-core cell, on its first CPU only;
-  Zephyr routes each device interrupt to the CPU that enables it.
+- The **SMP** targets build images for the two-core cells (CPU 2 and 3), and
+  with an overlay for both Cortex-A78 cores (see
+  [Section 6.5](#65-running-zephyr-on-two-cores-smp)). A single-core image
+  also runs in a two-core cell, on its first CPU only; Zephyr routes each
+  device interrupt to the CPU that enables it.
 
 ### 5.5 Building `hello_world`
 
@@ -872,9 +874,11 @@ of them can exist at a time.
 | `genio-<board>-evk-zephyr.cell` | 3 (Cortex-A55) | 3 (Cortex-A55) | Default: single-core images |
 | `genio-<board>-evk-zephyr-a78.cell` | 5 (Cortex-A78) | 7 (Cortex-A78) | Single-core images on a Cortex-A78 |
 | `genio-<board>-evk-zephyr-smp.cell` | 2 and 3 (Cortex-A55) | 2 and 3 (Cortex-A55) | SMP images |
+| `genio-<board>-evk-zephyr-a78-smp.cell` | 4 and 5 (Cortex-A78) | 6 and 7 (Cortex-A78) | SMP images on both Cortex-A78 cores (see [Section 6.5](#65-running-zephyr-on-two-cores-smp)) |
 | `genio-<board>-evk-zephyr-afe.cell` | 3 | 3 | Audio images |
 | `genio-<board>-evk-zephyr-afe-a78.cell` | 5 | 7 | Audio images on a Cortex-A78 |
 | `genio-<board>-evk-zephyr-afe-smp.cell` | 2 and 3 | 2 and 3 | Audio images on two cores |
+| `genio-<board>-evk-zephyr-afe-a78-smp.cell` | 4 and 5 | 6 and 7 | Audio images on both Cortex-A78 cores |
 | `genio-<board>-evk-zephyr-rpmsg.cell` | 3 | 3 | Images that exchange RPMsg messages with Linux (see [Section 7.4](#74-rpmsg-with-linux)) |
 
 `<board>` is `510` or `700`. The `-afe` cells grant the same resources as
@@ -918,9 +922,8 @@ Thermal management can still lower the frequency when the SoC is hot.
 
 A cell on the Cortex-A55 cluster always runs at the clock that Linux selects
 for that cluster, because Linux keeps CPU 0. A cell that takes both
-Cortex-A78 cores, such as a cell of your own (see
-[Section 10.3](#103-resources-of-the-zephyr-cells)), is different: it freezes
-the A78 clock at the operating point in force when the last A78 left Linux.
+Cortex-A78 cores, `-zephyr-a78-smp` or `-zephyr-afe-a78-smp`, is different:
+it freezes the A78 clock at the operating point in force when the last A78 left Linux.
 That is about 650 MHz if the cluster was idle under `schedutil`, and the
 maximum under `performance`: 2.0 GHz on the Genio 510 EVK, 2.2 GHz on the
 Genio 700 EVK. Select the governor before you create such a cell; while it
@@ -950,12 +953,63 @@ thread_b: Hello World from cpu 1 on mt8370_genio_510_evk!
 ```
 
 > **Caution:** Run SMP images only in the `-zephyr-smp` and
-> `-zephyr-afe-smp` cells. In any other cell the image fails while the cell
+> `-zephyr-afe-smp` cells, and SMP images built for both Cortex-A78 cores
+> only in the `-zephyr-a78-smp` and `-zephyr-afe-a78-smp` cells. In any other
+> cell the image fails while the cell
 > stays `running`, and the hypervisor console shows no error. In a
 > `-zephyr-a78` cell it stops before its console starts and prints nothing.
 > In a one-core cell such as `-zephyr` it panics after
 > `Failed to boot secondary CPU core 1 (MPID:0x200)`. See
 > [Section 9](#9-troubleshooting).
+
+**On both Cortex-A78 cores.** The `-zephyr-a78-smp` and `-zephyr-afe-a78-smp`
+cells are `-zephyr-smp` and `-zephyr-afe-smp` on both Cortex-A78 cores: CPU 4
+and 5 on the Genio 510 EVK, CPU 6 and 7 on the Genio 700 EVK, MPIDR `0x600`
+and `0x700` on both (see [Section 10.4](#104-cpu-and-mpidr-map)). Their image
+is built for the SMP target with a devicetree overlay that enables these two
+cores instead of CPU 2 and 3. Save it in the workspace as `a78-smp.overlay`:
+
+```
+&cpu2 {
+	status = "disabled";
+};
+
+&cpu3 {
+	status = "disabled";
+};
+
+&cpu6 {
+	status = "okay";
+};
+
+&cpu7 {
+	status = "okay";
+};
+```
+
+Build with the overlay, for example `samples/synchronization`:
+
+**Host**
+
+```bash
+west build -p -b mt8370_genio_510_evk/mt8188/a55/smp -d build/sync-a78 zephyr/samples/synchronization -- -DEXTRA_DTC_OVERLAY_FILE=$PWD/a78-smp.overlay
+```
+
+For the Genio 700 EVK, use `-b mt8390_genio_700_evk/mt8188/a55/smp`. Select
+the CPU frequency governor first (see [Section 6.4](#64-choosing-a-cell)),
+then run the image in the `-zephyr-a78-smp` cell:
+
+**Board**
+
+```bash
+jailhouse cell create /usr/share/jailhouse/cells/$(uname -n)-zephyr-a78-smp.cell
+jailhouse cell load zephyr-a78-smp /root/zephyr.bin -a 0x8000
+jailhouse cell start zephyr-a78-smp
+```
+
+Jailhouse starts the first Cortex-A78 core, and Zephyr starts the second one
+with PSCI `CPU_ON`. Audio images built this way, with the `mtk-afe` snippet,
+run in the `-zephyr-afe-a78-smp` cell.
 
 ### 6.6 Running Zephyr on a Cortex-A78
 
@@ -1692,9 +1746,11 @@ The `jailhouse` package installs these cell configurations in
 | `genio-<board>-evk-zephyr.cell` | `zephyr` | Zephyr on CPU 3 |
 | `genio-<board>-evk-zephyr-a78.cell` | `zephyr-a78` | Zephyr on a Cortex-A78 (CPU 5 / CPU 7) |
 | `genio-<board>-evk-zephyr-smp.cell` | `zephyr-smp` | Zephyr on CPU 2 and 3 |
+| `genio-<board>-evk-zephyr-a78-smp.cell` | `zephyr-a78-smp` | Zephyr on both Cortex-A78 cores (CPU 4 and 5 / CPU 6 and 7) |
 | `genio-<board>-evk-zephyr-afe.cell` | `zephyr-afe` | As `-zephyr`, plus the audio front end |
 | `genio-<board>-evk-zephyr-afe-a78.cell` | `zephyr-afe-a78` | As `-zephyr-a78`, plus the audio front end |
 | `genio-<board>-evk-zephyr-afe-smp.cell` | `zephyr-afe-smp` | As `-zephyr-smp`, plus the audio front end |
+| `genio-<board>-evk-zephyr-afe-a78-smp.cell` | `zephyr-afe-a78-smp` | As `-zephyr-a78-smp`, plus the audio front end |
 | `genio-<board>-evk-zephyr-rpmsg.cell` | `zephyr-rpmsg` | As `-zephyr`, plus the ivshmem device shared with Linux, for RPMsg |
 | `genio-<board>-evk-uart-demo.cell` | `uart-demo` | The `uart-demo` inmate on CPU 3 |
 
@@ -1759,7 +1815,8 @@ cell and names the entry. The build checks the CPUs, pins and interrupts;
 `jailhouse config check` checks the cells against each other and against the
 root cell (see the repository's `CONTRIBUTING.md`). The CPUs of the `-smp` cells must be the cores that the
 Zephyr SMP board variants enable, in `boards/mediatek/common/genio-evk-smp.dtsi`
-of MediaTek Zephyr.
+of MediaTek Zephyr, and those of the `-a78-smp` cells the cores that the
+overlay of [Section 6.5](#65-running-zephyr-on-two-cores-smp) enables.
 
 ### 10.4 CPU and MPIDR map
 
@@ -1891,4 +1948,4 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 | 0.9 | 2026-10-04 | Initial draft for review |
 | 0.9.1 | 2026-10-08 | UART0 named by its board label only. Linux sets the clocks of both CPU clusters; use the `performance` governor for measurements (Sections 6.4, 6.6, 9.7). How an SMP image fails in a cell other than an SMP cell (Section 6.5). Two new troubleshooting entries. The hypervisor of mtk-v1.0: its start-up messages (Section 6.2), and pin configuration registers that stay with Linux (Sections 9.3, 9.7). Section numbers as in revision 0.9.1. |
 | 1.0 | 2026-10-08 | First release, for MediaTek Jailhouse `mtk-v1.0.0` and Genio Zephyr `mtk-genio-v1.0.0`. RPMsg with Linux (Section 7.4). The layer's `jailhouse` recipe builds the release branch `mtk-v1.0` and installs the cells of one board (Sections 2.2, 3.3, 4.4, 9.2). The Zephyr workspace is created at the release tag (Section 5.2). Known limitations in step with the release notes (Section 9.7). Two new troubleshooting entries. Section numbers as in revision 1.0. |
-| 26.1 | **[TBD: release date]** | Release for MediaTek Jailhouse `v26.1` (developed as 1.1, which has no release of its own) with IoT Yocto v26.1, and MediaTek Zephyr and MediaTek Zephyr Samples at their tags `v26.1`, on Zephyr 4.5.0 (Sections 2.2, 2.3, 5.2). Jailhouse is built with the `jailhouse` feature of IoT Yocto v26.1 and its overlay `jailhouse.dtbo` (Chapters 3, 4 and 9). The version that the driver and the hypervisor report (Section 4.4). A watchdog for each Zephyr cell, and the cell restart daemon (Chapter 8; the former Chapters 8-10 are now 9-11). Each cell is named after its file (Sections 6.3-6.5, 7.4, 10.2, 10.6). Configuration format revision 16; the AFE cells no longer map the reset block (Sections 10.2, 10.3). The UART1 rules (Sections 6.1, 6.10). Limitations in step with the release notes (Section 10.7). The clock of a cell that takes both Cortex-A78 cores (Section 6.4), cacheable audio buffers (Section 7.3), and what more cores in a cell do and do not speed up (Section 10.7). Single-core images receive their device interrupts in a two-core cell too: Zephyr routes each one to the CPU that enables it (Section 5.4). |
+| 26.1 | **[TBD: release date]** | Release for MediaTek Jailhouse `v26.1` (developed as 1.1, which has no release of its own) with IoT Yocto v26.1, and MediaTek Zephyr and MediaTek Zephyr Samples at their tags `v26.1`, on Zephyr 4.5.0 (Sections 2.2, 2.3, 5.2). Jailhouse is built with the `jailhouse` feature of IoT Yocto v26.1 and its overlay `jailhouse.dtbo` (Chapters 3, 4 and 9). The version that the driver and the hypervisor report (Section 4.4). A watchdog for each Zephyr cell, and the cell restart daemon (Chapter 8; the former Chapters 8-10 are now 9-11). Each cell is named after its file (Sections 6.3-6.5, 7.4, 10.2, 10.6). Configuration format revision 16; the AFE cells no longer map the reset block (Sections 10.2, 10.3). The UART1 rules (Sections 6.1, 6.10). Limitations in step with the release notes (Section 10.7). The cells on both Cortex-A78 cores, `-zephyr-a78-smp` and `-zephyr-afe-a78-smp`, and their clock (Sections 6.4, 6.5, 10.2), cacheable audio buffers (Section 7.3), and what more cores in a cell do and do not speed up (Section 10.7). Single-core images receive their device interrupts in a two-core cell too: Zephyr routes each one to the CPU that enables it (Section 5.4). |
