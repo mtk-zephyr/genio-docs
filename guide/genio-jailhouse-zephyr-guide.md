@@ -882,7 +882,9 @@ of them can exist at a time.
 | `genio-<board>-evk-zephyr-rpmsg.cell` | 3 | 3 | Images that exchange RPMsg messages with Linux (see [Section 7.4](#74-rpmsg-with-linux)) |
 
 `<board>` is `510` or `700`. The `-afe` cells grant the same resources as
-their counterparts plus the audio front end (see
+their counterparts, plus the AFE with the clocks it programs and its DMA
+memory, all shared with Linux, the eTDM pins, the audio SiP call, and the
+audio reset through its watchdog (see
 [Section 10.3](#103-resources-of-the-zephyr-cells)).
 
 To use a different cell, destroy the current one first (see
