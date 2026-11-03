@@ -248,6 +248,28 @@ The leading space inside the quotes is required. No other layer and no
 [Section 3.3](#33-configuring-the-build)). Without this line, the build
 contains nothing of Jailhouse, and the image is the stock IoT Yocto image.
 
+The feature is supported on the Genio 510 EVK and the Genio 700 EVK only.
+For any other machine, the build stops when it parses the recipes, with an
+error that Jailhouse is not supported on that machine. For the Genio 1200
+EVK, it is an error like the following (the path of the layer shortened):
+
+```
+ERROR: .../meta-mediatek-bsp/recipes-kernel/jailhouse/jailhouse_git.bb: jailhouse is in DISTRO_FEATURES, but Jailhouse is not supported on this SoC (mt8195, MACHINE genio-1200-evk). It is supported on the Genio 510 and Genio 700 EVKs (MACHINE genio-510-evk and genio-700-evk): remove jailhouse from DISTRO_FEATURES for this machine, or enable it per machine: DISTRO_FEATURES:append:genio-510-evk = " jailhouse".
+ERROR: Parsing halted due to errors, see error messages above
+```
+
+For the other names of the two boards, such as `mt8370-evk` or
+`genio-510-evk-norboot`, the error says to use `MACHINE=genio-510-evk` or
+`genio-700-evk` instead.
+
+If one `local.conf` builds several machines, turn the feature on for the
+two boards only:
+
+```
+DISTRO_FEATURES:append:genio-510-evk = " jailhouse"
+DISTRO_FEATURES:append:genio-700-evk = " jailhouse"
+```
+
 #### With IoT Yocto v26.0
 
 IoT Yocto v26.0 (`rity-scarthgap-v26.0`) has no Jailhouse feature. With
@@ -284,12 +306,13 @@ export MACHINE=genio-510-evk    # or: genio-700-evk
 Jailhouse supports only these two machines among the Genio EVKs. Use these
 names: the other names of the same boards, `mt8370-evk` and `mt8390-evk`,
 are not supported, because the recipe installs the cells by the machine
-name.
+name. With the feature on, the build stops for them as for any other
+machine (see [Section 3.2](#32-enabling-the-jailhouse-feature)).
 
 #### What the feature enables
 
 The `jailhouse` feature of [Section 3.2](#32-enabling-the-jailhouse-feature)
-turns on everything Jailhouse needs, for these two machines only:
+turns on everything Jailhouse needs on these two machines:
 
 | What | Effect |
 |---|---|
@@ -1697,8 +1720,8 @@ On both EVKs, with the cells of this release:
 | `bitbake` fails with a `PermissionError` when it writes `/proc/self/uid_map` | The host restricts unprivileged user namespaces (for example, AppArmor on Ubuntu 24.04), which `bitbake` needs | Build on the verified Ubuntu 22.04 host, or allow user namespaces for `bitbake` as described in the Yocto Project documentation for your host |
 | The host runs out of memory during the Yocto build | Too many parallel build tasks for the host's RAM | Reduce `BB_NUMBER_THREADS` and `PARALLEL_MAKE` (see [Section 3.3](#33-configuring-the-build)) |
 | `genio-flash` waits, or reports that board control failed | The board is not in download mode | Use the Download and RST buttons (see [Section 4.3](#43-flashing-with-the-jailhouse-overlay)) |
-| `bitbake` stops with `Nothing RPROVIDES 'jailhouse'` and `jailhouse was skipped: missing required combined feature 'jailhouse' (not in COMBINED_FEATURES)` | `jailhouse` is requested, for example by an `IMAGE_INSTALL` line, without the `jailhouse` distribution feature | Add `DISTRO_FEATURES:append = " jailhouse"` to `local.conf` and remove the `IMAGE_INSTALL` line: the feature installs Jailhouse by itself (see [Section 3.2](#32-enabling-the-jailhouse-feature)) |
-| `bitbake` stops with `Nothing RPROVIDES 'jailhouse'` and `jailhouse was skipped: incompatible with machine <machine> (not in COMPATIBLE_MACHINE)` | `jailhouse` is requested for a machine other than `genio-510-evk` and `genio-700-evk` | Build for `genio-510-evk` or `genio-700-evk` (see [Section 3.3](#33-configuring-the-build)). On other machines, the feature line alone builds the image without Jailhouse |
+| `bitbake` stops with `Nothing RPROVIDES 'jailhouse'` and a message like `jailhouse was skipped: jailhouse is not in DISTRO_FEATURES` | `jailhouse` is requested, for example by an `IMAGE_INSTALL` line, without the `jailhouse` distribution feature | Add `DISTRO_FEATURES:append = " jailhouse"` to `local.conf` and remove the `IMAGE_INSTALL` line: the feature installs Jailhouse by itself (see [Section 3.2](#32-enabling-the-jailhouse-feature)) |
+| `bitbake` stops while it parses the recipes, with an error like `ERROR: .../jailhouse_git.bb: jailhouse is in DISTRO_FEATURES, but Jailhouse is not supported on ...` | The `jailhouse` feature is on for a machine other than `genio-510-evk` and `genio-700-evk`, for example `mt8370-evk`, `mt8390-evk` or a `-norboot` variant | Build for `genio-510-evk` or `genio-700-evk`, as the error says (see [Section 3.3](#33-configuring-the-build)), or turn the feature on for these two machines only (see [Section 3.2](#32-enabling-the-jailhouse-feature)) |
 | `modprobe jailhouse` fails: module not found | The image was built without Jailhouse | Add `DISTRO_FEATURES:append = " jailhouse"`, rebuild and flash (see [Section 3.2](#32-enabling-the-jailhouse-feature)) |
 | `jailhouse enable` fails, and the kernel log shows `jailhouse: request_mem_region failed for hypervisor memory.` | The Jailhouse overlay is not loaded, so Linux uses the hypervisor memory | Check `fw_printenv list_dtbo` and `/proc/iomem` (see [Section 4.4](#44-verifying-the-image-on-the-board)); flash again with `--load-dtbo` |
 | `jailhouse enable` fails with `Invalid argument`, and `jailhouse console` shows `Cell "genio-<board>-evk" has vendor resources, but no unit handles them` | The hypervisor was built without `CONFIG_SOC=mt8188`, so it has no MediaTek units | Build Jailhouse with `CONFIG_SOC=mt8188`, as the IoT Yocto recipe does |
@@ -1950,4 +1973,4 @@ start only its own CPUs; `CPU_ON` for any other CPU returns `DENIED`.
 | 0.9 | 2026-10-04 | Initial draft for review |
 | 0.9.1 | 2026-10-08 | UART0 named by its board label only. Linux sets the clocks of both CPU clusters; use the `performance` governor for measurements (Sections 6.4, 6.6, 9.7). How an SMP image fails in a cell other than an SMP cell (Section 6.5). Two new troubleshooting entries. The hypervisor of mtk-v1.0: its start-up messages (Section 6.2), and pin configuration registers that stay with Linux (Sections 9.3, 9.7). Section numbers as in revision 0.9.1. |
 | 1.0 | 2026-10-08 | First release, for MediaTek Jailhouse `mtk-v1.0.0` and Genio Zephyr `mtk-genio-v1.0.0`. RPMsg with Linux (Section 7.4). The layer's `jailhouse` recipe builds the release branch `mtk-v1.0` and installs the cells of one board (Sections 2.2, 3.3, 4.4, 9.2). The Zephyr workspace is created at the release tag (Section 5.2). Known limitations in step with the release notes (Section 9.7). Two new troubleshooting entries. Section numbers as in revision 1.0. |
-| 26.1 | **[TBD: release date]** | Release for MediaTek Jailhouse `v26.1` (developed as 1.1, which has no release of its own) with IoT Yocto v26.1, and MediaTek Zephyr and MediaTek Zephyr Samples at their tags `v26.1`, on Zephyr 4.5.0 (Sections 2.2, 2.3, 5.2). Jailhouse is built with the `jailhouse` feature of IoT Yocto v26.1 and its overlay `jailhouse.dtbo` (Chapters 3, 4 and 9). The version that the driver and the hypervisor report (Section 4.4). A watchdog for each Zephyr cell, and the cell restart daemon (Chapter 8; the former Chapters 8-10 are now 9-11). Each cell is named after its file (Sections 6.3-6.5, 7.4, 10.2, 10.6). Configuration format revision 16; the AFE cells no longer map the reset block (Sections 10.2, 10.3). The UART1 rules (Sections 6.1, 6.10). Limitations in step with the release notes (Section 10.7). The cells on both Cortex-A78 cores, `-zephyr-a78-smp` and `-zephyr-afe-a78-smp`, and their clock (Sections 6.4, 6.5, 10.2), cacheable audio buffers (Section 7.3), and what more cores in a cell do and do not speed up (Section 10.7). Single-core images receive their device interrupts in a two-core cell too: Zephyr routes each one to the CPU that enables it (Section 5.4). |
+| 26.1 | **[TBD: release date]** | Release for MediaTek Jailhouse `v26.1` (developed as 1.1, which has no release of its own) with IoT Yocto v26.1, and MediaTek Zephyr and MediaTek Zephyr Samples at their tags `v26.1`, on Zephyr 4.5.0 (Sections 2.2, 2.3, 5.2). Jailhouse is built with the `jailhouse` feature of IoT Yocto v26.1, which stops the build on other machines, and its overlay `jailhouse.dtbo` (Chapters 3, 4 and 9). The version that the driver and the hypervisor report (Section 4.4). A watchdog for each Zephyr cell, and the cell restart daemon (Chapter 8; the former Chapters 8-10 are now 9-11). Each cell is named after its file (Sections 6.3-6.5, 7.4, 10.2, 10.6). Configuration format revision 16; the AFE cells no longer map the reset block (Sections 10.2, 10.3). The UART1 rules (Sections 6.1, 6.10). Limitations in step with the release notes (Section 10.7). The cells on both Cortex-A78 cores, `-zephyr-a78-smp` and `-zephyr-afe-a78-smp`, and their clock (Sections 6.4, 6.5, 10.2), cacheable audio buffers (Section 7.3), and what more cores in a cell do and do not speed up (Section 10.7). Single-core images receive their device interrupts in a two-core cell too: Zephyr routes each one to the CPU that enables it (Section 5.4). |
