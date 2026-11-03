@@ -4,7 +4,7 @@
 MediaTek Jailhouse and Zephyr on the Genio 510 and Genio 700 EVKs: what each
 test does, why it is needed, what it checks, and the output of a passing
 run, taken from the test scripts and the logs of the board runs. This is
-revision 1.2, for review (2026-11-02), with its sources cited without the
+revision 1.2, for review (2026-11-03), with its sources cited without the
 paths and file names of the internal workspace. It covers the release that
 is now MediaTek Jailhouse v26.1, with 111 tests in 91 entries.
 
@@ -48,7 +48,8 @@ tests cover is public:
 | Chapter 7 | The status of the scripts | Reading the scripts against the logs; Section 7.4 from the record of the script changes of 2026-10-26 |
 | Chapter 8 | The proposed coded criteria | A proposal of 2026-10-26, condensed, as corrected that day; not implemented |
 | REL-01, IMG-03 | Before 2026-10-26 the printed return code of `rpmsg-test` was that of a bare `wait` | The script's header and the engineering notes |
-| Chapter 6 | Results of the host-side checks | The build records, which quote their outputs |
+| Chapter 6 | Results of the host-side checks | The build records, which quote their outputs; HOST-04 and HOST-05 quote the logs of their runs |
+| HOST-04 | The recipe checks the feature before the machine | The series' recipe, and case 2 without the feature, whose output is case 1's |
 
 ## License
 

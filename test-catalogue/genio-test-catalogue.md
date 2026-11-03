@@ -6,7 +6,7 @@
 | Applies to | Genio 510 EVK (MT8370) and Genio 700 EVK (MT8390) |
 | Software | MediaTek Jailhouse `e7fd8796`; IoT Yocto `rity-bringup-image` with the `jailhouse` feature, Linux 6.6.152; MediaTek Zephyr image set rel-1.1 |
 | Data | Board runs from 2026-10-08 to 2026-10-26 |
-| Last updated | 2026-11-02 |
+| Last updated | 2026-11-03 |
 
 ---
 
@@ -156,7 +156,7 @@ Conventions:
 | REL-11, REL-12 | – | 2026-10-12 (logs 125, 126) |
 | IMG-01 to IMG-03 | 2026-10-26 (logs 175, 177, 178) | 2026-10-26 (logs 183, 185, 186) |
 | IMG-04 permissions | 2026-10-22, on the board (log 174) | 2026-10-22, the image read on the host (log 174) |
-| HOST-01 to HOST-10 | 2026-10-21 to 2026-10-26, on the build host | |
+| HOST-01 to HOST-10 | 2026-10-21 to 2026-11-03, on the build host; HOST-04 and HOST-05 on 2026-11-03, on the series for IoT Yocto v26.1 | |
 
 All latest results are passes. In the W1 runs of 2026-10-22 (logs 157 and
 166), the second case of W1-TWO did not reach the watchdog because of a
@@ -3712,67 +3712,99 @@ turning the feature on must fail at planning, with a clear reason. It must
 not build a half-configured image. The same holds on a machine that
 Jailhouse does not support.
 
-**Procedure.** Parse-only runs (`bitbake -n rity-bringup-image`), with
-`IMAGE_INSTALL:append = " jailhouse"`:
+**Procedure.** `bitbake -n rity-bringup-image` with
+`IMAGE_INSTALL:append = " jailhouse"` in `local.conf`, on meta-mediatek-bsp
+and meta-rity scarthgap with the series as submitted for review, before the
+recipe's pin to v26.1, which changes only its version lines and a comment:
 1. on `genio-510-evk` without the feature;
-2. on `genio-1200-evk`, with and without the feature.
+2. on `genio-1200-evk`, without the feature and with it.
 
-**Checks.** The build is refused at planning. On the 510 the reason comes
-from `features_check`; on the 1200, from `COMPATIBLE_MACHINE`.
+**Checks.** Each run exits with 1. Without the feature, the recipes parse
+without error and the build is refused at planning, on both machines, with
+the recipe's reason that the feature is off: the recipe checks the feature
+before the machine. With the feature on, the 1200 stops at parse with
+HOST-05's error.
 
-**Expected output.** Case 1:
+**Expected output.** Case 1, the layer's path shortened:
 
 ```
-ERROR: Nothing RPROVIDES 'jailhouse' (but [...]/rity-bringup-image.bb RDEPENDS on or otherwise requires it)
-jailhouse was skipped: missing required combined feature 'jailhouse' (not in COMBINED_FEATURES)
-[...]
+Parsing of 6085 .bb files complete (0 cached, 6085 parsed). 8935 targets, 552 skipped, 7 masked, 0 errors.
+NOTE: Resolving any missing task queue dependencies
+ERROR: Nothing RPROVIDES 'jailhouse' (but <meta-rity>/meta-rity-bringup/recipes-bringup/images/rity-bringup-image.bb RDEPENDS on or otherwise requires it)
+jailhouse was skipped: jailhouse is not in DISTRO_FEATURES
+NOTE: Runtime target 'jailhouse' is unbuildable, removing...
+Missing or unbuildable dependency chain was: ['jailhouse']
 ERROR: Required build target 'rity-bringup-image' has no buildable providers.
+Missing or unbuildable dependency chain was: ['rity-bringup-image', 'jailhouse']
 [...]
+Summary: There were 2 ERROR messages, returning a non-zero exit code.
 EXIT CODE: 1
 ```
 
-Case 2:
+Case 2: without the feature, the same lines as case 1; with the feature,
+the lines of HOST-05's case 1.
 
-```
-jailhouse was skipped: incompatible with machine genio-1200-evk (not in COMPATIBLE_MACHINE)
-[...]
-EXIT CODE: 1
-```
-
-**Last run.** Pass, 2026-10-21 (case 1) and 2026-10-22 (case 2).
+**Last run.** Pass, 2026-11-03. Earlier revisions of the series gated
+Jailhouse with a machine feature and `COMPATIBLE_MACHINE`: on 2026-10-21
+(case 1) and 2026-10-22 (case 2) the same runs were refused at
+planning with `missing required combined feature 'jailhouse'` on the 510,
+and with `incompatible with machine genio-1200-evk` on the 1200 with and
+without the feature.
 
 **Sources.** Integration record, section 7, and the logs of the three
-parse-only runs.
+planning runs of 2026-11-03, with their commands, configurations and layer
+revisions, and of the earlier runs.
 
 #### HOST-05 Feature on, on a machine without Jailhouse
 
-**Purpose.** A distribution that turns the feature on for all its machines
-must build the others unchanged. The gated lines must expand to nothing
-where the machine feature is missing.
+**Purpose.** A configuration that turns the feature on for a machine that
+Jailhouse does not support must stop when the recipes are parsed, with an
+error that names the machine and the two supported ones. It must not build
+an image without Jailhouse silently. The other names of the two boards,
+which have their SoCs but not their cell files, are stopped too.
 
-**Procedure.** `MACHINE = "genio-1200-evk"` with the feature on: `bitbake -e`
-of `linux-mtk`, `dtbo` and `rity-bringup-image`. Print `COMBINED_FEATURES`,
-`DISTRO_FEATURES`, `MACHINE_FEATURES`, `SRC_URI` and `IMAGE_INSTALL`.
+**Procedure.** `DISTRO_FEATURES:append = " jailhouse"` in `local.conf`, and
+`bitbake -g rity-bringup-image`, on meta-mediatek-bsp and meta-rity
+scarthgap with the series as submitted for review, before the recipe's pin
+to v26.1, which changes only its version lines and a comment, for:
+1. `genio-1200-evk`, another SoC;
+2. `mt8370-evk` and `genio-510-evk-norboot`, on the SoC of the Genio 510;
+3. `mt8390-evk` and `genio-700-evk-norboot`, on the SoC of the Genio 700.
 
-**Checks.** `jailhouse` is in `DISTRO_FEATURES` but not in
-`COMBINED_FEATURES`, and none of the `SRC_URI`s or `IMAGE_INSTALL` contains
-anything of the series.
+**Checks.** Each run exits with 1, and the parse halts. The error names the
+machine, its SoC and the two supported machines. For another SoC it says to
+remove the feature for that machine or to enable it per machine; for the
+other names of the two boards, to use `MACHINE=genio-510-evk` or
+`genio-700-evk`.
 
-**Expected output.** Abridged:
+**Expected output.** Case 1, the layer's path shortened:
 
 ```
-== linux-mtk
-COMBINED_FEATURES="usbgadget wifi bluetooth pci usbhost alsa"
-DISTRO_FEATURES="[...] jailhouse [...]"
+Parsing recipes...ERROR: <meta-mediatek-bsp>/recipes-kernel/jailhouse/jailhouse_git.bb: jailhouse is in DISTRO_FEATURES, but Jailhouse is not supported on this SoC (mt8195, MACHINE genio-1200-evk). It is supported on the Genio 510 and Genio 700 EVKs (MACHINE genio-510-evk and genio-700-evk): remove jailhouse from DISTRO_FEATURES for this machine, or enable it per machine: DISTRO_FEATURES:append:genio-510-evk = " jailhouse".
+ERROR: Parsing halted due to errors, see error messages above
 [...]
-SRC_URI="git://git@gitlab.com/mediatek/aiot/bsp/linux.git;protocol=https;branch=mtk-v6.6 file://disable-buildin-ax88179.cfg [...]"
-[...]
-EXIT CODE: 0
+Summary: There were 2 ERROR messages, returning a non-zero exit code.
+EXIT CODE: 1
 ```
 
-**Last run.** Pass, 2026-10-21.
+Case 2, `mt8370-evk`; the other three names differ only in the machine and
+the SoC, which is `mt8188` for the Genio 700 (its `SOC_FAMILY`):
 
-**Sources.** Integration record, section 7.
+```
+Parsing recipes...ERROR: <meta-mediatek-bsp>/recipes-kernel/jailhouse/jailhouse_git.bb: jailhouse is in DISTRO_FEATURES, but Jailhouse is not supported on MACHINE mt8370-evk (SoC mt8370). It is supported on the Genio 510 and Genio 700 EVKs (MACHINE genio-510-evk and genio-700-evk): use MACHINE=genio-510-evk or genio-700-evk.
+ERROR: Parsing halted due to errors, see error messages above
+[...]
+EXIT CODE: 1
+```
+
+**Last run.** Pass, 2026-11-03. Earlier revisions of the series gated
+Jailhouse with a machine feature: on 2026-10-21, `bitbake -e` on
+`genio-1200-evk` with the feature on showed nothing of Jailhouse in the
+kernel, the overlay or the image, and exited with 0. The series now stops
+the parse instead.
+
+**Sources.** Integration record, section 7, and the logs of the five parse
+runs of 2026-11-03, with their commands, configurations and layer revisions.
 
 #### HOST-06 Stale overlay after switching the feature off
 
@@ -4144,4 +4176,4 @@ TEST-INDEX
 | 1.0 | 2026-10-26 | First issue, for review |
 | 1.1 | 2026-10-26 | Re-runs of W1-TWO, W1-M3-T18 and REL-03 to REL-05 (board logs 188 to 190) and the script changes of 2026-10-26 in the entries and Chapter 7; the reset cause in W1-D5/D6 and REL-10; Chapter 8, proposed coded criteria |
 | 1.1.1 | 2026-10-26 | Public copy: the sources are cited by board log number and file name, without the paths of the internal workspace. No test, check or result changed |
-| 1.2 | 2026-11-02 | The return code of `rpmsg-test`, 124 after the timeout: REL-01 with board logs 191 and 192, IMG-03, W1-D4, Sections 7.2 and 7.4; Chapter 8's W1-D0 and W1-D4 criteria as corrected. Helper scripts, record outputs and check logs are described instead of named (HOST-01 to HOST-04, HOST-06 to HOST-08, Section 7.4). A note on the version strings in the expected outputs (Section 1.4), the hypervisor of the runs described as the v26.1 line, and the Zephyr software named MediaTek Zephyr and MediaTek Zephyr Samples (Section 1.3) |
+| 1.2 | 2026-11-03 | The return code of `rpmsg-test`, 124 after the timeout: REL-01 with board logs 191 and 192, IMG-03, W1-D4, Sections 7.2 and 7.4; Chapter 8's W1-D0 and W1-D4 criteria as corrected. HOST-04 and HOST-05 run again on the series for IoT Yocto v26.1, which gates Jailhouse with the distro feature alone and stops the parse on other machines. Helper scripts, record outputs and check logs are described instead of named (HOST-01 to HOST-08, Section 7.4). A note on the version strings in the expected outputs (Section 1.4), the hypervisor of the runs described as the v26.1 line, and the Zephyr software named MediaTek Zephyr and MediaTek Zephyr Samples (Section 1.3) |
